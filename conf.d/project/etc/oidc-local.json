@@ -1,0 +1,127 @@
+{
+  "name": "afb-gdal",
+  "tracereq": "none",
+  "verbose": 2,
+  "port": 1234,
+  "https": true,
+  "https-cert": "../conf.d/project/ssl/devel-cert.pem",
+  "https-key": "../conf.d/project/ssl/devel-key.pem",
+  "extension": "libafb-python-binder-ext.so",
+  "roothttp": ".",
+  "rootdir":  "../conf.d/project/htdocs",
+  "binding" : [{
+      "uid": "fedid-api",
+      "path": "/usr/local/fedid-binding/lib/fedid-binding.so",
+      "config": {"dbpath":"/var/tmp/fedid-local.sqlite"}
+  }],
+  "@extconfig": {
+    "python-binder": {
+      "api": "nav",
+      "info": "gdal secure gdal local authentication sample config",
+      "globals": {
+          "login": "/nav/common/login.html",
+          "register": "/nav/common/register.html",
+          "fedlink": "/nav/common/fedlink.html",
+          "error": "/nav/common/error.html",
+          "timeout": 600
+      },
+      "idps": [
+        {
+            "uid": "pam",
+            "info": "Linux local authentication",
+            "plugin": {
+              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
+              "ldpath": "libidp-nav-pam-auth.so",
+              "gids":16
+            },
+            "statics": {
+                "login": "/nav/pam/login",
+                "logo": "/nav/pam/logo-64px.png",
+                "timeout": 900
+            },
+            "profiles": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        }, {
+            "uid": "ldap-iotbzh",
+            "type": "ldap",
+            "info": "Iot.bzh internal LDAP",
+            "statics": {
+                "login": "/nav/ldap/login",
+                "logo": "/nav/ldap/logo-64px.png",
+                "timeout": 900
+            },
+            "schema": {
+                "info": "generate a curl -u %userdn% %ldapuri%/%groupdn%?dn?sub?%filter%",
+                "uri": "ldap://ldap.ovh.iot",
+                "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
+                "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
+                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)",
+            },
+            "wellknown": {
+                "tokenid": "/nav/ldap/login.html"
+            },
+            "profiles": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        },{
+            "uid": "nfc-scard",
+            "type": "pcsc",
+            "info": "NFC Mifare/Classic smartcard authentication (check ",
+            "plugin": {
+                "ldpath": "libidp-nav-pcscd-auth.so",
+                "config":     {
+                    "info" : "Mifare/Classic command samples",
+                    "reader": "acr122",
+                    "keys": [
+                        {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
+                        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
+                    ],
+                    "cmds": [
+                        // card should be pre-provision with right keys/acls (pcsc-client --help)
+                        {"uid":"fedid"   , "action":"uuid"},
+                        {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len":48},
+                        {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len":48},
+                        {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len":48},
+                        {"uid":"company" , "action":"read","sec": 4, "key":"key-a", "len":48},
+                        {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len":48},
+                        {"uid":"apps"    , "action":"read","sec": 6, "key":"key-a", "len":48}
+                    ]
+                }
+            },
+            "statics": {
+                "login": "/nav/nfc-auth/login",
+                "logo": "/nav/nfc-auth/logo-64px.png",
+                "timeout": 900
+            },
+            "wellknown": {
+                "tokenid": "/nav/nfc-auth/login.html"
+            },
+            "profiles": [
+              {"uid":"linked","loa":1, "scope":"fedid", "slave":true},
+              {"uid":"admin", "loa":2, "scope":"fedid,pseudo,name,email,company", "attrs":"roles,apps"}
+            ]
+        }
+      ],
+      "apis": [
+        {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
+        {"uid": "test1","lazy":1},
+        {"uid": "test2","uri":"unix:@test2", "loa":1, "require": ["user"], "lazy":1},
+        {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "require": ["user","admin"], "lazy":1},
+        {"uid": "simple","uri":"unix:/tmp/spawn-binding/simple", "loa":1, "require": ["user"], "lazy":1}
+        ],
+      "alias": [
+        {"uid": "idp-common", "url":"/nav/common", "path":"idps/common" },
+        {"uid": "idp-github"  , "url":"/nav/github","loa":0, "path":"idps/github" },
+        {"uid": "idp-pam"     , "url":"/nav/pam"   ,"loa":0, "path":"idps/pam" },
+        {"uid": "idp-ldap"    , "url":"/nav/ldap"   ,"loa":0, "path":"idps/ldap" },
+        {"uid": "idp-nfc"    , "url":"/nav/nfc-auth"   ,"loa":0, "path":"idps/pcsc-nfc" },
+        {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
+        {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
+        {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },
+        {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "require": ["wheel","iotbzh","sudo"]},
+      ]
+    }
+  }
+}
+

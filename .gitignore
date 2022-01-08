@@ -1,0 +1,7 @@
+build*
+package
+nbproject/
+.stfolder
+.*.sw*
+*.tar.gz
+__*

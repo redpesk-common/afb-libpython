@@ -1,0 +1,117 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "env": {"LD_LIBRARY_PATH": "${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64"},
+            "name":"Python: Current File",
+            "type":"python",
+            "request":"launch",
+            "program":"${file}",
+            "console":"integratedTerminal"
+        },
+        {
+          // python ../src/python-binder.python ../sample/
+          "name": "simple-python",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/python3",
+          "args": ["./samples/simple-api.py"],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        }, {
+          // python ../src/python-binder.python ../sample/
+          "name": "subcall-python",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/python3",
+          "args": ["./samples/subcall-api.py"],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },{
+          // python ../src/python-binder.python ../sample/
+          "name": "event-python",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/python3",
+          "args": ["./samples/event-api.py"],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },{
+          // python ../src/python-binder.python ../sample/
+          "name": "loa-python",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/python3",
+          "args": ["./samples/loa-api.py"],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },{
+          // python ../src/python-binder.python ../sample/
+          "name": "test-python",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/bin/python3",
+          "args": ["./samples/test-api.py"],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+    ]
+}

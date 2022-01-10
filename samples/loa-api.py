@@ -5,7 +5,7 @@ Copyright 2021 Fulup Ar Foll fulup@iot.bzh
 Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END_LICENSE$
 
 object:
-    loa-api.lua loanstrate how to use LOA and permission. While LOA can be tested outside of any context,
+    loa-api.py loanstrate how to use LOA and permission. While LOA can be tested outside of any context,
     permission check requiere a valid Cynagora installation
 
     - loa/set current LOA level to 1
@@ -61,10 +61,10 @@ def mainLoopCB(binder):
 
 # api verb list
 loaVerbs = [
-    {'uid':'lua-ping' , 'verb':'ping'  , 'callback':pingCB    ,'auth':'anonymous', 'info':'lua ping loa def'},
-    {'uid':'lua-set'  , 'verb':'set'   , 'callback':setLoaCB  ,'auth':'anonymous', 'info':'set LOA to 1'},
-    {'uid':'lua-reset', 'verb':'reset' , 'callback':resetLoaCB,'auth':'anonymous', 'info':'reset LOA to 0'},
-    {'uid':'lua-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'autorized', 'info':'protected API requiere LOA>=1'},
+    {'uid':'py-ping' , 'verb':'ping'  , 'callback':pingCB    ,'auth':'anonymous', 'info':'py ping loa def'},
+    {'uid':'py-set'  , 'verb':'set'   , 'callback':setLoaCB  ,'auth':'anonymous', 'info':'set LOA to 1'},
+    {'uid':'py-reset', 'verb':'reset' , 'callback':resetLoaCB,'auth':'anonymous', 'info':'reset LOA to 0'},
+    {'uid':'py-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'autorized', 'info':'protected API requiere LOA>=1'},
 ]
 
 # define permissions
@@ -79,10 +79,10 @@ loaAlcs = [
 
 # define and instanciate API
 loaApi = {
-    'uid'     : 'lua-loa',
+    'uid'     : 'py-loa',
     'api'     : 'loa',
     'provide' : 'test',
-    'info'    : 'lua api loa',
+    'info'    : 'py api loa',
     'verbose' : 9,
     'export'  : 'public',
     'verbs'   : loaVerbs,
@@ -91,7 +91,7 @@ loaApi = {
 
 # define and instanciate libafb-binder
 loaOpts = {
-    'uid'     : 'lua-binder',
+    'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
     'roothttp': './conf.d/project/htdocs',

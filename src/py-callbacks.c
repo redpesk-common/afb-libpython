@@ -468,7 +468,7 @@ void GlueTimerClear(AfbHandleT *glue) {
     Py_DecRef(glue->timer.configP);
     glue->timer.usage--;
 
-    // free timer luaState and ctx
+    // free timer pyState and ctx
     if (glue->timer.usage <= 0) {
        glue->magic=0;
        Py_DecRef(glue->timer.userdataP);

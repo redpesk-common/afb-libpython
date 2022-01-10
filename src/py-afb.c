@@ -696,7 +696,7 @@ static PyObject* GlueEventHandler(PyObject *self, PyObject *argsP)
     AfbHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue) goto OnErrorExit;
 
-    // retreive API from lua handle
+    // retreive API from py handle
     afb_api_t afbApi= GlueGetApi(glue);
     if (!afbApi) goto OnErrorExit;
 

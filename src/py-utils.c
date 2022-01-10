@@ -458,6 +458,11 @@ void PyRqtUnref(AfbHandleT *glue) {
 
 }
 
+typedef struct {
+    pthread_once_t *once;
+    void *ctx;
+} PyThreadUserData;
+
 // allocate and push a py request handle
 AfbHandleT *PyRqtNew(afb_req_t afbRqt)
 {

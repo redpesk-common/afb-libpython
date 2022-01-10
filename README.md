@@ -31,13 +31,15 @@ Make sure that your dependencies are reachable from python scripting engine, bef
 
 Codium does not include GDP profile by default you should get them from Ms-Code repository
 
-Go to code market place and download a version compatible with your editor version
-    https://github.com/microsoft/vscode-cpptools/releases
-    https://github.com/microsoft/vscode-python/releases
+Go to code market place and download a version compatible with your editor version:
+
+* https://github.com/microsoft/vscode-cpptools/releases
+* https://github.com/microsoft/vscode-python/releases
 
 Install your extention
-    codium --install-extension cpptools-linux.vsix
-    codium --install-extension ms-python-release.vsix
+
+* codium --install-extension cpptools-linux.vsix
+* codium --install-extension ms-python-release.vsix
 
 WARNING: the lastest version is probably not compatible with your codium version.   
 
@@ -102,16 +104,16 @@ def pingCB(rqt, *args):
 
 ## api verb list
 demoVerbs = [
-    {'uid':'lua-ping', 'verb':'ping', 'callback':pingCB, 'info':'lua ping demo function'},
-    {'uid':'lua-args', 'verb':'args', 'callback':argsCB, 'info':'lua check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
+    {'uid':'py-ping', 'verb':'ping', 'callback':pingCB, 'info':'py ping demo function'},
+    {'uid':'py-args', 'verb':'args', 'callback':argsCB, 'info':'py check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
 ]
 
 ## define and instanciate API
 demoApi = {
-    'uid'     : 'lua-demo',
+    'uid'     : 'py-demo',
     'api'     : 'demo',
     'class'   : 'test',
-    'info'    : 'lua api demo',
+    'info'    : 'py api demo',
     'verbose' : 9,
     'export'  : 'public',
     'verbs'   : demoVerbs,

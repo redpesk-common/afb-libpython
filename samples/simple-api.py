@@ -42,16 +42,16 @@ def loopBinderCb(binder):
 
 ## api verb list
 demoVerbs = [
-    {'uid':'lua-ping', 'verb':'ping', 'callback':pingCB, 'info':'lua ping demo function'},
-    {'uid':'lua-args', 'verb':'args', 'callback':argsCB, 'info':'lua check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
+    {'uid':'py-ping', 'verb':'ping', 'callback':pingCB, 'info':'py ping demo function'},
+    {'uid':'py-args', 'verb':'args', 'callback':argsCB, 'info':'py check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
 ]
 
 ## define and instanciate API
 demoApi = {
-    'uid'     : 'lua-demo',
+    'uid'     : 'py-demo',
     'api'     : 'demo',
     'class'   : 'test',
-    'info'    : 'lua api demo',
+    'info'    : 'py api demo',
     'verbose' : 9,
     'export'  : 'public',
     'verbs'   : demoVerbs,
@@ -60,7 +60,7 @@ demoApi = {
 
 # define and instantiate libafb-binder
 demoOpts = {
-    'uid'     : 'lua-binder',
+    'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
     'roothttp': './conf.d/project/htdocs',

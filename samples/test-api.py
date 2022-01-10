@@ -5,7 +5,7 @@ Copyright 2021 Fulup Ar Foll fulup@iot.bzh
 Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END_LICENSE$
 
 object:
-    test-api.lua does not implement new api, but test existing APIs, it:
+    test-api.py does not implement new api, but test existing APIs, it:
     - imports helloworld-event binding and api
     - call helloworld-event/startTimer to activate binding timer (1 event per second)
     - call helloworld-event/subscribe to subscribe to event
@@ -13,7 +13,7 @@ object:
     - finally (EventReceiveCB) count 5 events and release the mainloop lock received from StartAsyncTest
 
 usage
-    - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ lua samples/test-api.lua
+    - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/test-api.py
     - result of the test position mainloop exit status
 
 config: following should match your installation paths
@@ -87,7 +87,7 @@ bindingOpts = {
 
 # define and instanciate libafb-binder
 binderOpts = {
-    'uid'     : 'lua-binder',
+    'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
     'roothttp': './conf.d/project/htdocs',

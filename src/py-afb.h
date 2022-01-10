@@ -82,7 +82,7 @@ struct PyApiHandleS {
 struct PyRqtHandleS {
     struct PyApiHandleS *api;
     pyVerbDataT  *vcData;
-    int responded;
+    int replied;
     afb_req_t afb;
 };
 

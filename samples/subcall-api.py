@@ -40,16 +40,16 @@ def pingCB(rqt, *args):
 
 def asyncRespCB(rqt, status, ctx, *args):
     libafb.notice  (rqt, "asyncRespCB status=%d ctx:'%s', response:'%s'", status, ctx, args)
-    libafb.respond (rqt, status, 'async helloworld/testargs', args)
+    libafb.reply (rqt, status, 'async helloworld/testargs', args)
 
 def syncCB(rqt, *args):
     libafb.notice  (rqt, "syncCB calling helloworld/testargs *args=%s", args)
     status= libafb.callsync(rqt, "helloworld","testargs", args[0])[0]
 
     if status != 0:
-        libafb.respond (rqt, status, 'async helloworld/testargs fail')
+        libafb.reply (rqt, status, 'async helloworld/testargs fail')
     else:
-        libafb.respond (rqt, status, 'async helloworld/testargs success')
+        libafb.reply (rqt, status, 'async helloworld/testargs success')
 
 def asyncCB(rqt, *args):
     userdata= "context-user-data"

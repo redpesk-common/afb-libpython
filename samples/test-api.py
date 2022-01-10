@@ -9,8 +9,8 @@ object:
     - imports helloworld-event binding and api
     - call helloworld-event/startTimer to activate binding timer (1 event per second)
     - call helloworld-event/subscribe to subscribe to event
-    - lock mainloop with SchedWaitCB and register the eventHandler (EventReceiveCB) with mainloop lock
-    - finally (EventReceiveCB) count 5 events and release the mainloop lock received from SchedWaitCB
+    - lock mainloop with StartAsyncTest and register the eventHandler (EventReceiveCB) with mainloop lock
+    - finally (EventReceiveCB) count 5 events and release the mainloop lock received from StartAsyncTest
 
 usage
     - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ lua samples/test-api.lua
@@ -36,11 +36,6 @@ def EventReceiveCB(evt, name, lock, *data):
         libafb.notice (evt, "*** EventReceiveCB releasing lock ***");
         libafb.schedunlock (evt, lock, evtCount) # schedunlock(handle, lock, status)
 
-def SchedWaitCB(api, lock, context):
-    libafb.notice (api, "Schedlock timer-event handler register")
-    libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
-    return 0
-
 def EventSubscribe(binder):
     libafb.notice (binder, "helloworld-event", "startTimer")
     status= libafb.callsync(binder, "helloworld-event", "subscribe")[0]
@@ -54,6 +49,11 @@ def StartEventTimer(binder):
     if status != 0:
         libafb.notice  (binder, "helloworld event-timer fail status=%d", status)
     return status
+
+def StartAsyncTest(api, lock, context):
+    libafb.notice (api, "Schedlock timer-event handler register")
+    libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
+    return 0
 
 # executed when binder and all api/interfaces are ready to serv
 def startTestCB(binder):
@@ -71,7 +71,7 @@ def startTestCB(binder):
        raise Exception ('event-subscribe')
 
     libafb.notice (binder, "waiting (%ds) for test to finish", timeout)
-    status= libafb.schedwait(binder, timeout, SchedWaitCB, None)
+    status= libafb.schedwait(binder, timeout, StartAsyncTest, None)
 
     libafb.notice (binder, "test done status=%d", status)
     return(status) # negative status force mainloop exit

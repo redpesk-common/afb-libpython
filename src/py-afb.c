@@ -998,7 +998,7 @@ static PyMethodDef MethodsDef[] = {
     {"config"        , PyGetConfig          , METH_VARARGS, "Return glue handle full/partial config"},
     {"apiadd"        , GlueApiCreate        , METH_VARARGS, "Add a new API to the binder"},
     {"mainloop"      , GlueMainLoop         , METH_VARARGS, "Activate mainloop and exec startup callback"},
-    {"respond"       , GlueRespond          , METH_VARARGS, "Explicit response tp afb request"},
+    {"reply"         , GlueRespond          , METH_VARARGS, "Explicit response tp afb request"},
     {"binding"       , GlueBindingLoad      , METH_VARARGS, "Load binding an expose corresponding api/verbs"},
     {"callasync"     , GlueAsyncCall        , METH_VARARGS, "AFB asynchronous subcall"},
     {"callsync"      , GlueSyncCall         , METH_VARARGS, "AFB synchronous subcall"},

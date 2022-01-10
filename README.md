@@ -27,6 +27,19 @@ Make sure that your dependencies are reachable from python scripting engine, bef
     export PYTHONPATH=/path/to/afb-libafb.so
     python3 sample/simple-api.python
 ```
+## Debug from codium
+
+Codium does not include GDP profile by default you should get them from Ms-Code repository
+
+Go to code market place and download a version compatible with your editor version
+    https://github.com/microsoft/vscode-cpptools/releases
+    https://github.com/microsoft/vscode-python/releases
+
+Install your extention
+    codium --install-extension cpptools-linux.vsix
+    codium --install-extension ms-python-release.vsix
+
+WARNING: the lastest version is probably not compatible with your codium version.   
 
 ## Import afb-pythonglue
 
@@ -112,20 +125,20 @@ myapi= libafb.apiadd(demoApi)
 
 Both synchronous and asynchronous call are supported. The fact the subcall is done from a request or from a api context is abstracted to the user. When doing it from RQT context client security context is not propagated and remove event are claimed by the python api.
 
-Explicit response to a request is done with ``` libafb.respond(rqt,status,arg1,..,argn)```. When running a synchronous request an implicit response may also be done with ```return(status, arg1,...,arg-n)```. Note that with afb-v4 an application may return zero, one or many data.
+Explicit response to a request is done with ``` libafb.reply(rqt,status,arg1,..,argn)```. When running a synchronous request an implicit response may also be done with ```return(status, arg1,...,arg-n)```. Note that with afb-v4 an application may return zero, one or many data.
 
 ```python
 def asyncRespCB(rqt, status, ctx, *args):
     libafb.notice  (rqt, "asyncRespCB status=%d ctx:'%s', response:'%s'", status, ctx, args)
-    libafb.respond (rqt, status, 'async helloworld/testargs', args)
+    libafb.reply (rqt, status, 'async helloworld/testargs', args)
 
 def syncCB(rqt, *args):
     libafb.notice  (rqt, "syncCB calling helloworld/testargs *args=%s", args)
     status= libafb.callsync(rqt, "helloworld","testargs", args[0])[0]
     if status != 0:
-        libafb.respond (rqt, status, 'async helloworld/testargs fail')
+        libafb.reply (rqt, status, 'async helloworld/testargs fail')
     else:
-        libafb.respond (rqt, status, 'async helloworld/testargs success')
+        libafb.reply (rqt, status, 'async helloworld/testargs success')
 
 def asyncCB(rqt, *args):
     userdata= "context-user-data"

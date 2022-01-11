@@ -41,6 +41,8 @@ void PyFreeJsonCtx (json_object *configJ, void *userdata) ;
 AfbHandleT *PyRqtNew(afb_req_t afbRqt);
 void PyRqtAddref(AfbHandleT *pyRqt);
 void PyRqtUnref(AfbHandleT *pyRqt);
+int PyInitThreading (AfbHandleT*glue);
+PyThreadState *GetPrivateData(void);
 
 afb_api_t GlueGetApi(AfbHandleT*glue);
 int GlueReply(AfbHandleT *glue, long status, long nbreply, afb_data_t *reply);

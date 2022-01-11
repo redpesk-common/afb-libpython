@@ -81,6 +81,12 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
     // allocate afbMain glue and parse config to jsonC
     afbMain= calloc(1, sizeof(AfbHandleT));
     afbMain->magic= GLUE_BINDER_MAGIC;
+    
+    int err= PyInitThreading(afbMain);
+    if (err) {
+        errorMsg= "fail to Python multi-threading";
+        goto OnErrorExit;
+    }
 
     if (!PyArg_ParseTuple(argsP, "O", &afbMain->binder.configP)) {
         errorMsg= "invalid config object";

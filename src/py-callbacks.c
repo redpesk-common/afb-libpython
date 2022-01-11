@@ -44,6 +44,7 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
     json_object *argsJ[nparams];
 
     // prepare calling argument list
+    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nparams+PY_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, PyUnicode_FromString(evtName));
@@ -116,6 +117,7 @@ void GlueSchedWaitCb (int signum, void *userdata, struct afb_sched_lock *afbLock
     glue->api.afb=ctx->lock.apiv4;
 
     // prepare calling argument list
+    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(PY_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeHandleCb));
     PyTuple_SetItem (argsP, 1, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
@@ -136,10 +138,12 @@ void GlueSchedTimeoutCb (int signum, void *userdata) {
     const char *errorMsg = NULL;
     GlueHandleCbT *ctx= (GlueHandleCbT*)userdata;
     assert (ctx && ctx->magic == GLUE_SCHED_MAGIC);
+    PyThreadState_Swap(GetPrivateData());
 
     // timer not cancel
     if (signum != SIGABRT) {
         // prepare calling argument list
+        PyThreadState_Swap(GetPrivateData());
         PyObject *argsP= PyTuple_New(PY_TWO_ARG);
         PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->handle, GLUE_AFB_UID, NULL));
         PyTuple_SetItem (argsP, 1, ctx->userdataP);
@@ -212,6 +216,7 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
     glue->rqt.vcData = pyVcData;
 
     // prepare calling argument list
+    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nparams+PY_ONE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
 
@@ -329,6 +334,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
 
         // effectively exec PY script code
         GLUE_AFB_NOTICE(ctx,"GlueCtrlCb: state=[%s]", state);
+        PyThreadState_Swap(GetPrivateData());
         PyObject *resultP= PyObject_CallFunction (ctx->api.ctrlCb, "Os", PyCapsule_New(ctx, GLUE_AFB_UID, NULL), state);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
@@ -353,6 +359,7 @@ int GlueStartupCb(void *callback, void *userdata)
     if (callbackP)
     {
         // in 3.10 should be replace by PyObject_CallOneArg(callbackP, handleP);
+        PyThreadState_Swap(GetPrivateData());
         PyObject *argsP= PyTuple_New(PY_ONE_ARG);
         PyTuple_SetItem (argsP, 0, PyCapsule_New(userdata, GLUE_AFB_UID, NULL));
         PyObject *resultP= PyObject_Call (callbackP, argsP, NULL);
@@ -424,6 +431,7 @@ static void GluePcallFunc (void *userdata, int status, unsigned nreplies, afb_da
     }
 
     // prepare calling argument list
+    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nreplies+PY_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->glue, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
@@ -483,6 +491,7 @@ void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount) {
     assert (ctx && ctx->magic == GLUE_TIMER_MAGIC);
     long status=0;
 
+    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(PY_TWO_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, ctx->timer.userdataP);

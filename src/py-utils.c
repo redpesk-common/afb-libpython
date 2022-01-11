@@ -28,12 +28,22 @@
 #include <string.h>
 #include <assert.h>
 #include <wrap-json.h>
+#include <pthread.h>
 
 #include <glue-afb.h>
 #include <glue-utils.h>
 
 #include "py-afb.h"
 #include "py-utils.h"
+
+// initialise per thread user data key
+int PyInitThreading (AfbHandleT*glue) {
+#if PY_MINOR_VERSION < 7
+    PyEval_InitThreads(); // from 3.7 this is useless
+#endif    
+    glue->binder.pyState= PyThreadState_Get();
+    return 0;
+}
 
 // retreive API from py handle
 afb_api_t GlueGetApi(AfbHandleT*glue) {
@@ -458,10 +468,41 @@ void PyRqtUnref(AfbHandleT *glue) {
 
 }
 
+static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
+static pthread_key_t dataKey;
+
 typedef struct {
-    pthread_once_t *once;
+    pyGlueMagicsE magic;
+    PyThreadState *pyInterp;
     void *ctx;
-} PyThreadUserData;
+} PyThreadUserDataT;
+
+static void FreePrivateData(void *ctx) {
+    PyThreadUserDataT *data= (PyThreadUserDataT*)ctx;
+    assert (data && data->magic==GLUE_THREAD_DATA);
+    data->magic=-1;
+    Py_EndInterpreter(data->pyInterp);
+    free (data);
+}
+
+static void NewPrivateData (void) {
+    pthread_key_create(&dataKey, FreePrivateData); 
+}
+
+PyThreadState *GetPrivateData(void) {
+    // get current interpretor from poisix thread private data
+    (void) pthread_once(&onceKey, NewPrivateData);
+    PyThreadUserDataT *tPrivate = pthread_getspecific(dataKey);
+    if (!tPrivate) {
+        tPrivate= calloc (1, sizeof(PyThreadUserDataT));
+        tPrivate->magic= GLUE_THREAD_DATA;
+        tPrivate->pyInterp= Py_NewInterpreter();
+        pthread_setspecific(dataKey, tPrivate);
+    }
+
+    assert (tPrivate && tPrivate->magic == GLUE_THREAD_DATA);
+    return tPrivate->pyInterp;
+}
 
 // allocate and push a py request handle
 AfbHandleT *PyRqtNew(afb_req_t afbRqt)
@@ -475,7 +516,6 @@ AfbHandleT *PyRqtNew(afb_req_t afbRqt)
     AfbHandleT *glue = (AfbHandleT *)calloc(1, sizeof(AfbHandleT));
     glue->magic = GLUE_RQT_MAGIC;
     glue->rqt.afb = afbRqt;
-    //glue->pyState = PyThreadState_Get();
 
     // add py rqt handle to afb request livecycle
     afb_req_v4_set_userdata (afbRqt, (void*)glue, PyRqtFree);

@@ -36,12 +36,49 @@
 #include "py-afb.h"
 #include "py-utils.h"
 
+
+static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
+static pthread_key_t dataKey;
+
+typedef struct {
+    pyGlueMagicsE magic;
+    PyThreadState *pyInterp;
+    void *ctx;
+} PyThreadUserDataT;
+
+static void FreePrivateData(void *ctx) {
+    PyThreadUserDataT *data= (PyThreadUserDataT*)ctx;
+    assert (data && data->magic==GLUE_THREAD_DATA);
+    data->magic=-1;
+    Py_EndInterpreter(data->pyInterp);
+    free (data);
+}
+
+static void NewPrivateData (void) {
+    pthread_key_create(&dataKey, FreePrivateData); 
+}
+
+PyThreadState *GetPrivateData(void) {
+    // get current interpretor from poisix thread private data
+    PyThreadUserDataT *tPrivate = pthread_getspecific(dataKey);
+    if (!tPrivate) {
+        tPrivate= calloc (1, sizeof(PyThreadUserDataT));
+        tPrivate->magic= GLUE_THREAD_DATA;
+        tPrivate->pyInterp= Py_NewInterpreter();
+        pthread_setspecific(dataKey, tPrivate);
+    }
+
+    assert (tPrivate && tPrivate->magic == GLUE_THREAD_DATA);
+    return tPrivate->pyInterp;
+}
+
 // initialise per thread user data key
-int PyInitThreading (AfbHandleT*glue) {
+int InitPrivateData (AfbHandleT*glue) {
 #if PY_MINOR_VERSION < 7
     PyEval_InitThreads(); // from 3.7 this is useless
 #endif    
     glue->binder.pyState= PyThreadState_Get();
+    (void) pthread_once(&onceKey, NewPrivateData);
     return 0;
 }
 
@@ -466,42 +503,6 @@ void PyRqtUnref(AfbHandleT *glue) {
         afb_req_unref (glue->rqt.afb);
     }
 
-}
-
-static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
-static pthread_key_t dataKey;
-
-typedef struct {
-    pyGlueMagicsE magic;
-    PyThreadState *pyInterp;
-    void *ctx;
-} PyThreadUserDataT;
-
-static void FreePrivateData(void *ctx) {
-    PyThreadUserDataT *data= (PyThreadUserDataT*)ctx;
-    assert (data && data->magic==GLUE_THREAD_DATA);
-    data->magic=-1;
-    Py_EndInterpreter(data->pyInterp);
-    free (data);
-}
-
-static void NewPrivateData (void) {
-    pthread_key_create(&dataKey, FreePrivateData); 
-}
-
-PyThreadState *GetPrivateData(void) {
-    // get current interpretor from poisix thread private data
-    (void) pthread_once(&onceKey, NewPrivateData);
-    PyThreadUserDataT *tPrivate = pthread_getspecific(dataKey);
-    if (!tPrivate) {
-        tPrivate= calloc (1, sizeof(PyThreadUserDataT));
-        tPrivate->magic= GLUE_THREAD_DATA;
-        tPrivate->pyInterp= Py_NewInterpreter();
-        pthread_setspecific(dataKey, tPrivate);
-    }
-
-    assert (tPrivate && tPrivate->magic == GLUE_THREAD_DATA);
-    return tPrivate->pyInterp;
 }
 
 // allocate and push a py request handle

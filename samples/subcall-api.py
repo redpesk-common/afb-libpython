@@ -39,6 +39,7 @@ def pingCB(rqt, *args):
     return (0, {"pong":count}) # implicit response
 
 def asyncRespCB(rqt, status, ctx, *args):
+    global count
     libafb.notice  (rqt, "asyncRespCB status=%d ctx:'%s', response:'%s'", status, ctx, args)
     libafb.reply (rqt, status, 'async helloworld/testargs', args)
 

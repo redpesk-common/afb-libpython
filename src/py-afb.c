@@ -82,7 +82,7 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
     afbMain= calloc(1, sizeof(AfbHandleT));
     afbMain->magic= GLUE_BINDER_MAGIC;
     
-    int err= PyInitThreading(afbMain);
+    int err= InitPrivateData(afbMain);
     if (err) {
         errorMsg= "fail to Python multi-threading";
         goto OnErrorExit;
@@ -989,8 +989,9 @@ OnErrorExit:
 static PyObject *PyPingTest(PyObject *self, PyObject *argsP)
 {
     static long count=0;
-    fprintf (stderr, "PyPingTest count=%ld\n", count);
-    return PyLong_FromLong(count++);
+    long tid= pthread_self();
+    fprintf (stderr, "PyPingTest count=%ld tid=%ld\n", count++, tid);
+    return PyLong_FromLong(tid);
 }
 
 static PyMethodDef MethodsDef[] = {

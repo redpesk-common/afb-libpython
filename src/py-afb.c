@@ -81,7 +81,7 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
     // allocate afbMain glue and parse config to jsonC
     afbMain= calloc(1, sizeof(AfbHandleT));
     afbMain->magic= GLUE_BINDER_MAGIC;
-    
+
     int err= InitPrivateData(afbMain);
     if (err) {
         errorMsg= "fail to Python multi-threading";
@@ -820,8 +820,8 @@ static PyObject* GlueSchedWait(PyObject *self, PyObject *argsP)
     lock->lock.userdataP= userdataP;
 
     err= afb_sched_enter(NULL, (int)timeout, GlueSchedWaitCb, lock);
-    if (err) {
-        errorMsg= "fail to register afb_sched_enter";
+    if (err < 0) {
+        errorMsg= "afb_sched_enter (timeout?)";
         goto OnErrorExit;
     }
 
@@ -834,13 +834,13 @@ static PyObject* GlueSchedWait(PyObject *self, PyObject *argsP)
     return PyLong_FromLong(status);
 
 OnErrorExit:
+    PY_DBG_ERROR(afbMain, errorMsg);
+    PyErr_SetString(PyExc_RuntimeError, errorMsg);
     if (lock) {
         Py_DecRef(lock->lock.callbackP);
         if (lock->lock.userdataP) Py_DecRef(lock->lock.userdataP);
         free (lock);
     }
-    PY_DBG_ERROR(afbMain, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
     Py_RETURN_NONE;
 }
 
@@ -917,7 +917,7 @@ static PyObject* GlueSchedUnlock(PyObject *self, PyObject *argsP)
 
     err= afb_sched_leave(lock->lock.afb);
     if (err) {
-        errorMsg= "fail to register afb_sched_enter";
+        errorMsg= "afb_sched_leave (invalid lock)";
         goto OnErrorExit;
     }
 

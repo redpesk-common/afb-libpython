@@ -58,7 +58,7 @@ def StartAsyncTest(api, lock, context):
 # executed when binder and all api/interfaces are ready to serv
 def startTestCB(binder):
     status=0
-    timeout=4 # seconds (Jose TBD timeout does not work)
+    timeout=7 # seconds
     libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
 
     # implement here after your startup/testing code

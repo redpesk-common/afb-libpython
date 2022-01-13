@@ -370,7 +370,7 @@ int GlueStartupCb(void *callback, void *userdata)
     return status;
 
 OnErrorExit:
-    PY_DBG_ERROR(afbMain, "fail mainloop startup");
+    PY_DBG_ERROR(afbMain, "Aborted: Mainloop Startup");
     return -1;
 }
 

@@ -55,7 +55,7 @@ static void FreePrivateData(void *ctx) {
 }
 
 static void NewPrivateData (void) {
-    pthread_key_create(&dataKey, FreePrivateData); 
+    pthread_key_create(&dataKey, FreePrivateData);
 }
 
 PyThreadState *GetPrivateData(void) {
@@ -76,7 +76,7 @@ PyThreadState *GetPrivateData(void) {
 int InitPrivateData (AfbHandleT*glue) {
 #if PY_MINOR_VERSION < 7
     PyEval_InitThreads(); // from 3.7 this is useless
-#endif    
+#endif
     glue->binder.pyState= PyThreadState_Get();
     (void) pthread_once(&onceKey, NewPrivateData);
     return 0;
@@ -215,12 +215,12 @@ void GlueVerbose(AfbHandleT *handle, int level, const char *file, int line, cons
 }
 
 void PyInfoDbg (AfbHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) {
-    char const *info, *filename;
-    int linenum;
+    char const *info=NULL, *filename=NULL;
+    int linenum=-1;
     va_list args;
 
     //PyErr_Print();
-    PyObject *typeP, *valueP, *tracebackP;
+    PyObject *typeP, *valueP=NULL, *tracebackP;
     PyErr_Fetch(&typeP, &valueP, &tracebackP);
     if (valueP) info= PyUnicode_AsUTF8(valueP);
     if (tracebackP) {

@@ -101,9 +101,6 @@ afb_api_t GlueGetApi(AfbHandleT*glue) {
         case GLUE_EVT_MAGIC:
             afbApi= glue->evt.apiv4;
             break;
-        case GLUE_HANDLER_MAGIC:
-            afbApi= glue->handler.apiv4;
-            break;
         default:
             afbApi=NULL;
     }
@@ -195,8 +192,6 @@ void GlueVerbose(AfbHandleT *handle, int level, const char *file, int line, cons
     va_start(args, fmt);
     switch (handle->magic)
     {
-
-    case GLUE_HANDLER_MAGIC:
     case GLUE_API_MAGIC:
     case GLUE_EVT_MAGIC:
     case GLUE_LOCK_MAGIC:
@@ -291,7 +286,7 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
                 param[count++]= (void*)PyUnicode_AsUTF8(argP);
             }
             else if (argP == Py_None) {
-                param[count++]=Py_None;
+                param[count++]=NULL;
             }
             else {
                 paramJ[index]= pyObjToJson(argP);
@@ -345,7 +340,7 @@ json_object *PyJsonDbg(const char *message)
         funcname= PyUnicode_AsUTF8(traceback->tb_frame->f_code->co_name);
     }
 
-    wrap_json_pack(&errorJ, "{ss* ss* si* ss* ss*}", "info", message, "source", filename, "line", linenum, "name", funcname, "info", info);
+    wrap_json_pack(&errorJ, "{ss* ss* si* ss* ss*}", "message", message, "source", filename, "line", linenum, "name", funcname, "info", info);
     return (errorJ);
 }
 
@@ -481,7 +476,7 @@ OnErrorExit:
     return NULL;
 }
 
-void PyRqtFree(void *userdata)
+static void PyRqtFree(void *userdata)
 {
     AfbHandleT *glue= (AfbHandleT*)userdata;
     assert (glue && (glue->magic == GLUE_RQT_MAGIC));

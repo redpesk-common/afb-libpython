@@ -64,20 +64,20 @@ loaVerbs = [
     {'uid':'py-ping' , 'verb':'ping'  , 'callback':pingCB    ,'auth':'anonymous', 'info':'py ping loa def'},
     {'uid':'py-set'  , 'verb':'set'   , 'callback':setLoaCB  ,'auth':'anonymous', 'info':'set LOA to 1'},
     {'uid':'py-reset', 'verb':'reset' , 'callback':resetLoaCB,'auth':'anonymous', 'info':'reset LOA to 0'},
-    {'uid':'py-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'autorized', 'info':'protected API requiere LOA>=1'},
+    {'uid':'py-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'authorized', 'info':'protected API requiere LOA>=1'},
 ]
 
 # define permissions
 loaAlcs = [
     ['anonymous'      , 'loa', 0],
-    ['autorized'      , 'loa', 1],
+    ['authorized'      , 'loa', 1],
     ['perm-1'         , 'key', 'permission-1'],
     ['perm-2'         , 'key', 'permission-2'],
     ['login-and-roles', 'and', ['perm-2', 'perm-1']],
-    ['login-or-roles' , 'or' , ['autorized', 'perm-1']],
+    ['login-or-roles' , 'or' , ['authorized', 'perm-1']],
 ]
 
-# define and instanciate API
+# define and instantiate API
 loaApi = {
     'uid'     : 'py-loa',
     'api'     : 'loa',
@@ -102,7 +102,7 @@ loaOpts = {
 
 # create and start binder
 binder= libafb.binder(loaOpts)
-glue= libafb.apiadd(loaApi)
+myapi = libafb.apiadd(loaApi)
 
 # should never return
 status= libafb.mainloop(mainLoopCB)

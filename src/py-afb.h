@@ -45,21 +45,11 @@ typedef enum {
     GLUE_API_MAGIC=852951357,
     GLUE_RQT_MAGIC=684756123,
     GLUE_EVT_MAGIC=894576231,
-    GLUE_VCDATA_MAGIC=684756123,
     GLUE_TIMER_MAGIC=4628170,
     GLUE_LOCK_MAGIC=379645852,
-    GLUE_HANDLER_MAGIC=579315863,
     GLUE_SCHED_MAGIC=73498127,
     GLUE_THREAD_DATA=123987582,
 } pyGlueMagicsE;
-
-// compiled AFB verb context data
-typedef struct {
-    int magic;
-    const char *verb;
-    const char *info;
-    PyObject   *funcP;
-} pyVerbDataT;
 
 struct PyBinderHandleS {
     AfbBinderHandleT *afb;
@@ -83,7 +73,7 @@ struct PyApiHandleS {
 
 struct PyRqtHandleS {
     struct PyApiHandleS *api;
-    pyVerbDataT   *vcData;
+    AfbVcbDataT   *vcbData;
     PyThreadState *pyState;
     int replied;
     afb_req_t afb;

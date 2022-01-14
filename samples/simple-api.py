@@ -46,7 +46,7 @@ demoVerbs = [
     {'uid':'py-args', 'verb':'args', 'callback':argsCB, 'info':'py check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
 ]
 
-## define and instanciate API
+## define and instantiate API
 demoApi = {
     'uid'     : 'py-demo',
     'api'     : 'demo',
@@ -69,7 +69,7 @@ demoOpts = {
 
 # instantiate binder and API
 binder= libafb.binder(demoOpts)
-Glue = libafb.apiadd(demoApi)
+myapi = libafb.apiadd(demoApi)
 
 # enter mainloop
 status= libafb.mainloop(loopBinderCb)

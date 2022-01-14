@@ -9,8 +9,8 @@ object:
     - imports helloworld-event binding and api
     - call helloworld-event/startTimer to activate binding timer (1 event per second)
     - call helloworld-event/subscribe to subscribe to event
-    - lock mainloop with StartAsyncTest and register the eventHandler (EventReceiveCB) with mainloop lock
-    - finally (EventReceiveCB) count 5 events and release the mainloop lock received from StartAsyncTest
+    - lock mainloop with aSyncEvtCheck and register the eventHandler (EventReceiveCB) with mainloop lock
+    - finally (EventReceiveCB) count 5 events and release the mainloop lock received from aSyncEvtCheck
 
 usage
     - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/test-api.py
@@ -36,21 +36,21 @@ def EventReceiveCB(evt, name, lock, *data):
         libafb.notice (evt, "*** EventReceiveCB releasing lock ***");
         libafb.schedunlock (evt, lock, evtCount) # schedunlock(handle, lock, status)
 
-def EventSubscribe(binder):
+def SyncEvtSub(binder):
     libafb.notice (binder, "helloworld-event", "startTimer")
     status= libafb.callsync(binder, "helloworld-event", "subscribe")[0]
     if status != 0:
         libafb.notice  (binder, "helloworld subscribe-event fail status=%d", status)
     return status
 
-def StartEventTimer(binder):
+def SyncStartTimer(binder):
     libafb.notice (binder, "helloworld-event/startTimer")
     status= libafb.callsync(binder, "helloworld-event", "startTimer")[0]
     if status != 0:
         libafb.notice  (binder, "helloworld event-timer fail status=%d", status)
     return status
 
-def StartAsyncTest(api, lock, context):
+def aSyncEvtCheck(api, lock, context):
     libafb.notice (api, "Schedlock timer-event handler register")
     libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
     return 0
@@ -62,16 +62,16 @@ def startTestCB(binder):
     libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
 
     # implement here after your startup/testing code
-    status= StartEventTimer(binder)
+    status= SyncStartTimer(binder)
     if status != 0:
        raise Exception ('event-create')
 
-    status= EventSubscribe(binder)
+    status= SyncEvtSub(binder)
     if status != 0:
        raise Exception ('event-subscribe')
 
     libafb.notice (binder, "waiting (%ds) for test to finish", timeout)
-    status= libafb.schedwait(binder, timeout, StartAsyncTest, None)
+    status= libafb.schedwait(binder, timeout, aSyncEvtCheck, None)
 
     libafb.notice (binder, "test done status=%d", status)
     return(status) # negative status force mainloop exit
@@ -85,7 +85,7 @@ bindingOpts = {
     'alias'  : ['/hello:'+os.getenv("HOME")+'/opt/helloworld-binding/htdocs', '/devtools:/usr/share/afb-ui-devtools/binder'],
 }
 
-# define and instanciate libafb-binder
+# define and instantiate libafb-binder
 binderOpts = {
     'uid'     : 'py-binder',
     'port'    : 1234,

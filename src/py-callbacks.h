@@ -20,6 +20,7 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
  */
+#pragma once
 
 #include <Python.h>
 

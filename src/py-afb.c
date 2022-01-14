@@ -40,31 +40,31 @@
 AfbHandleT *afbMain=NULL;
 
 
-static PyObject * PyPrintInfo(PyObject *self, PyObject *argsP)
+static PyObject * GluePrintInfo(PyObject *self, PyObject *argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_INFO, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject * PyPrintError(PyObject *self, PyObject *argsP)
+static PyObject * GluePrintError(PyObject *self, PyObject *argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_ERROR, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject * PyPrintWarning(PyObject *self, PyObject *argsP)
+static PyObject * GluePrintWarning(PyObject *self, PyObject *argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_WARNING, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject * PyPrintNotice(PyObject *self, PyObject *argsP)
+static PyObject * GluePrintNotice(PyObject *self, PyObject *argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_NOTICE, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject * PyPrintDebug(PyObject *self, PyObject *argsP)
+static PyObject * GluePrintDebug(PyObject *self, PyObject *argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_DEBUG, self, argsP);
     Py_RETURN_NONE;
@@ -98,7 +98,7 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
     }
 
-    errorMsg= AfbBinderConfig(configJ, &afbMain->binder.afb);
+    errorMsg= AfbBinderConfig(configJ, &afbMain->binder.afb, afbMain);
     if (errorMsg) goto OnErrorExit;
 
     // return afbMain glue as a Python capcule glue
@@ -194,7 +194,7 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject* PyGetConfig(PyObject *self, PyObject *argsP)
+static PyObject* GlueGetConfig(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "syntax: config(handle[,key])";
     PyObject *capculeP, *configP, *resultP, *slotP, *keyP=NULL;
@@ -694,7 +694,6 @@ OnErrorExit:
 
 static PyObject* GlueEventHandler(PyObject *self, PyObject *argsP)
 {
-    PyObject *slotP;
     const char *errorMsg = "syntax: evthandler(handle, config, userdata)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != PY_THREE_ARG) goto OnErrorExit;
@@ -706,31 +705,32 @@ static PyObject* GlueEventHandler(PyObject *self, PyObject *argsP)
     afb_api_t afbApi= GlueGetApi(glue);
     if (!afbApi) goto OnErrorExit;
 
-    AfbHandleT *handle= calloc(1, sizeof(AfbHandleT));
-    handle->magic= GLUE_HANDLER_MAGIC;
-    handle->handler.apiv4= afbApi;
+    AfbVcbDataT *vcbdata= calloc(1, sizeof(AfbVcbDataT));
+    vcbdata->magic= (void*)AfbAddVerbs;
 
-    handle->handler.configP = PyTuple_GetItem(argsP,1);
-    if (!PyDict_Check(handle->handler.configP)) goto OnErrorExit;
-    Py_IncRef(handle->handler.configP);
+    PyObject *configP = PyTuple_GetItem(argsP,1);
+    if (!PyDict_Check(configP)) goto OnErrorExit;
+    Py_IncRef(configP);
 
     errorMsg= "config={'uid':'xxx','pattern':'yyy','callback':'zzz'}";
-    slotP= PyDict_GetItemString(handle->handler.configP, "uid");
+    PyObject *slotP= PyDict_GetItemString(configP, "uid");
     if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
-    handle->handler.uid= PyUnicode_AsUTF8(slotP);
+    const char*uid= PyUnicode_AsUTF8(slotP);
 
-    slotP= PyDict_GetItemString(handle->handler.configP, "pattern");
+    slotP= PyDict_GetItemString(configP, "pattern");
     if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
     const char *pattern= PyUnicode_AsUTF8(slotP);
 
-    handle->handler.callbackP= PyDict_GetItemString(handle->handler.configP, "callback");
-    if (!slotP || !PyCallable_Check(handle->handler.callbackP)) goto OnErrorExit;
-    Py_IncRef(handle->handler.callbackP);
+    PyObject *callbackP= PyDict_GetItemString(configP, "callback");
+    if (!slotP || !PyCallable_Check(callbackP)) goto OnErrorExit;
+    Py_IncRef(callbackP);
+    vcbdata->callback= (void*) callbackP;
 
-    handle->handler.userdataP = PyTuple_GetItem(argsP,2);
-    if (handle->handler.userdataP) Py_IncRef(handle->handler.userdataP);
+    PyObject *userdataP = PyTuple_GetItem(argsP,2);
+    if (userdataP) Py_IncRef(userdataP);
+    vcbdata->userdata = (void*)userdataP;
 
-    errorMsg= AfbAddOneEvent (afbApi, handle->handler.uid, pattern, GlueEvtHandlerCb, handle);
+    errorMsg= AfbAddOneEvent (afbApi, uid, pattern, GlueEvtHandlerCb, vcbdata);
     if (errorMsg) goto OnErrorExit;
 
     Py_RETURN_NONE;
@@ -986,23 +986,23 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject *PyPingTest(PyObject *self, PyObject *argsP)
+static PyObject *GluePingTest(PyObject *self, PyObject *argsP)
 {
     static long count=0;
     long tid= pthread_self();
-    fprintf (stderr, "PyPingTest count=%ld tid=%ld\n", count++, tid);
+    fprintf (stderr, "GluePingTest count=%ld tid=%ld\n", count++, tid);
     return PyLong_FromLong(tid);
 }
 
 static PyMethodDef MethodsDef[] = {
-    {"error"         , PyPrintError         , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_ERROR"},
-    {"warning"       , PyPrintWarning       , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_WARNING"},
-    {"notice"        , PyPrintNotice        , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_NOTICE"},
-    {"info"          , PyPrintInfo          , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_INFO"},
-    {"debug"         , PyPrintDebug         , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_DEBUG"},
-    {"ping"          , PyPingTest           , METH_VARARGS, "Check afb-libpython is loaded"},
+    {"error"         , GluePrintError       , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_ERROR"},
+    {"warning"       , GluePrintWarning     , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_WARNING"},
+    {"notice"        , GluePrintNotice      , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_NOTICE"},
+    {"info"          , GluePrintInfo        , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_INFO"},
+    {"debug"         , GluePrintDebug       , METH_VARARGS, "print level AFB_SYSLOG_LEVEL_DEBUG"},
+    {"ping"          , GluePingTest         , METH_VARARGS, "Check afb-libpython is loaded"},
     {"binder"        , GlueBinderConf       , METH_VARARGS, "Configure and create afbMain glue"},
-    {"config"        , PyGetConfig          , METH_VARARGS, "Return glue handle full/partial config"},
+    {"config"        , GlueGetConfig        , METH_VARARGS, "Return glue handle full/partial config"},
     {"apiadd"        , GlueApiCreate        , METH_VARARGS, "Add a new API to the binder"},
     {"mainloop"      , GlueMainLoop         , METH_VARARGS, "Activate mainloop and exec startup callback"},
     {"reply"         , GlueRespond          , METH_VARARGS, "Explicit response tp afb request"},

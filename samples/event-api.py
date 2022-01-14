@@ -10,7 +10,6 @@ object:
     - 2nd when API ready, create an event named 'py-event'
     - 3rd creates a timer(py-timer) that tic every 3s and call timerCB that fire previsouly created event
     - 4rd implements two verbs demo/subscribe and demo/unscribe
-    - 5rd attaches two events handler to the API evttimerCB/evtOtherCB those handlers requiere a subcall to subscribe some event
     demo/subscribe|unsubscribe can be requested from REST|websocket from a browser on http:localhost:1234
 
 usage
@@ -56,12 +55,6 @@ def unsubscribeCB(rqt, *args):
     libafb.evtunsubscribe (rqt, pyEvent)
     return 0 # implicit respond
 
-def evttimerCB (api, name, data):
-    libafb.notice  (rqt, "evttimerCB name=%s data=%s", name, data)
-
-def evtOtherCB (api, name, data):
-    libafb.notice  (rqt, "evtOtherCB name=%s data=%s", name, data)
-
 
 # When Api ready (state==init) start event & timer
 def apiControlCb(api, state):
@@ -103,11 +96,6 @@ apiVerbs = [
     {'uid':'py-unsubscribe', 'verb':'unsubscribe', 'callback':unsubscribeCB, 'info':'unsubscribe to event'},
 ]
 
-apiEvents = [
-    {'uid':'py-event' , 'pattern':'py-event', 'callback':evttimerCB , 'info':'timer event handler'},
-    {'uid':'py-other' , 'pattern':'*', 'callback':evtOtherCB , 'info':'any other event handler'},
-]
-
 # define and instanciate API
 apiOpts = {
     'uid'     : 'py-event',
@@ -119,7 +107,6 @@ apiOpts = {
     'control' : apiControlCb,
     'tictime' : 3,
     'verbs'   : apiVerbs,
-    'events'  : apiEvents,
     'alias'  : ['/devtools:/usr/share/afb-ui-devtools/binder'],
 }
 

@@ -7,11 +7,12 @@ Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END
 
 object:
     subcall-api.py
-    - 1st load helloworld binding
-    - 2nd create a 'demo' api requiring 'helloworld' api
-    - 3rd check helloworld/ping is responsing before exposing http service (mainLoopCb)
-    - 4rd implement two verbs demo/sync|async those two verb subcall helloworld/testargs in synchronous/asynchronous mode
-    demo/synbc|async can be requested from REST|websocket from a browser on http:localhost:1234
+    - 1) load helloworld binding
+    - 2) create a 'demo' api requiring 'helloworld' api
+    - 3) check helloworld/ping is responsing before exposing http service (mainLoopCb)
+    - 4) implement two verbs demo/sync|async those two verb subcall helloworld/testargs in synchronous/asynchronous mode
+    - 5) subscribe event request timer event from helloworld-event api
+    demo/sync|async|subscribe|unsubscribe can be requested from REST|websocket from a browser on http:localhost:1234
 
 usage
     - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/subcall-api.py
@@ -38,6 +39,12 @@ def pingCB(rqt, *args):
     libafb.notice  (rqt, "From pingCB count=%d", count)
     return (0, {"pong":count}) # implicit response
 
+def helloEventCB (api, name, *data):
+    libafb.notice  (api, "helloEventCB name=%s received", name)
+
+def otherEventCB (api, name, *data):
+    libafb.notice  (api, "otherEventCB name=%s data=%s", name, *data)
+
 def asyncRespCB(rqt, status, ctx, *args):
     global count
     libafb.notice  (rqt, "asyncRespCB status=%d ctx:'%s', response:'%s'", status, ctx, args)
@@ -58,6 +65,16 @@ def asyncCB(rqt, *args):
     libafb.callasync (rqt,"helloworld", "testargs", asyncRespCB, userdata, args[0])
     # response within 'asyncRespCB' callback
 
+def subscribeCB(rqt, *args):
+    libafb.notice  (rqt, "subscribeCB helloworld-event/subscribe")
+    status= libafb.callsync(rqt, "helloworld-event","subscribe")[0]
+    return (status) # implicit response
+
+def unsubscribeCB(rqt, *args):
+    libafb.notice  (rqt, "unsubscribeCB helloworld-event/unsubscribe")
+    status= libafb.callsync(rqt, "helloworld-event","unsubscribe")[0]
+    return (status) # implicit response
+
 # api control function
 def startApiCb(api, action):
     apiname= libafb.config(api, "api")
@@ -73,21 +90,28 @@ def mainLoopCb(binder):
     libafb.notice(binder, "mainLoopCb=[%s]", libafb.config(binder, "uid"))
 
     # callsync return a tuple (status is [0])
-    status= libafb.callsync(binder, "helloworld", "ping")[0]
+    status= libafb.callsync(binder, "helloworld-event", "startTimer")[0]
     if status != 0:
         # force an explicit response
-        libafb.notice  (binder, "helloworld/ping fail status=%d", status)
+        libafb.notice  (binder, "helloworld-event/startTimer fail status=%d", status)
 
     return status # negative status force mainloop exit
 
 # api verb list
 demoVerbs = [
-    {'uid':'py-ping'    , 'verb':'ping' , 'callback':pingCB , 'info':'py ping demo function'},
-    {'uid':'py-synccall', 'verb':'sync' , 'callback':syncCB , 'info':'synchronous subcall of private api' , 'sample':[{'cezam':'open'}, {'cezam':'close'}]},
-    {'uid':'py-asyncall', 'verb':'async', 'callback':asyncCB, 'info':'asynchronous subcall of private api', 'sample':[{'cezam':'open'}, {'cezam':'close'}]},
+    {'uid':'py-ping'       , 'verb':'ping'       , 'callback':pingCB        , 'info':'py ping demo function'},
+    {'uid':'py-synccall'   , 'verb':'sync'       , 'callback':syncCB        , 'info':'synchronous subcall of private api' , 'sample':[{'cezam':'open'}, {'cezam':'close'}]},
+    {'uid':'py-asyncall'   , 'verb':'async'      , 'callback':asyncCB       , 'info':'asynchronous subcall of private api', 'sample':[{'cezam':'open'}, {'cezam':'close'}]},
+    {'uid':'py-subscribe'  , 'verb':'subscribe'  , 'callback':subscribeCB   , 'info':'Subscribe hello event'},
+    {'uid':'py-unsubscribe', 'verb':'unsubscribe', 'callback':unsubscribeCB , 'info':'Unsubscribe event'},
 ]
 
-# define and instanciate API
+demoEvents = [
+    {'uid':'py-event' , 'pattern':'helloworld-event/timerCount', 'callback':helloEventCB , 'info':'timer event handler'},
+    {'uid':'py-other' , 'pattern':'*', 'callback':otherEventCB , 'info':'any other event handler'},
+]
+
+# define and instantiate API
 demoApi = {
     'uid'     : 'py-demo',
     'api'     : 'demo',
@@ -97,31 +121,41 @@ demoApi = {
     'export'  : 'public',
     'require' : 'helloworld',
     'control' : startApiCb,
+    'events'  : demoEvents,
     'verbs'   : demoVerbs,
+    'alias'   : ['/devtools:/usr/share/afb-ui-devtools/binder'],
+
 }
 
 # helloworld binding sample definition
-hellowBinding = {
+HelloBinding = {
     'uid'    : 'helloworld',
     'export' : 'private',
     'path'   : 'afb-helloworld-skeleton.so',
-    'ldpath' : [os.getenv('HOME') + '/opt/helloworld-binding/lib','/usr/local/helloworld-binding/lib'],
-    'alias'  : ['/hello:'+os.getenv("HOME")+'/opt/helloworld-binding/htdocs','/devtools:/usr/share/afb-ui-devtools/binder'],
 }
 
-# define and instanciate libafb-binder
-demoOpts = {
+# helloworld binding sample definition
+EventBinding = {
+    'uid'    : 'subscribe',
+    'export' : 'private',
+    'path'   : 'afb-helloworld-subscribe-event.so',
+}
+
+# define and instantiate libafb-binder
+BinderOpts = {
     'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
     'roothttp': './conf.d/project/htdocs',
     'rootdir' : '.',
+    'ldpath' : [os.getenv('HOME') + '/opt/helloworld-binding/lib','/usr/local/helloworld-binding/lib'],
 }
 
 # create and start binder
-binder= libafb.binder(demoOpts)
-hello = libafb.binding(hellowBinding)
-glue= libafb.apiadd(demoApi)
+libafb.binder(BinderOpts)
+libafb.binding(HelloBinding)
+libafb.binding(EventBinding)
+libafb.apiadd(demoApi)
 
 # should never return
 status= libafb.mainloop(mainLoopCb)

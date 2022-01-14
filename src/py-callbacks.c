@@ -36,20 +36,49 @@
 #include "py-callbacks.h"
 
 void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
-    AfbHandleT *ctx= (AfbHandleT*) userdata;
-    assert (ctx && ctx->magic==GLUE_HANDLER_MAGIC);
     const char *errorMsg = NULL;
     int err;
     afb_data_t argsD[nparams];
     json_object *argsJ[nparams];
 
+    AfbHandleT *glue= (AfbHandleT*) afb_api_get_userdata(api);
+    assert (glue);
+
+    // on first call we compile configJ to boost following py api/verb calls
+    AfbVcbDataT *vcbData= userdata;
+    if (vcbData->magic != (void*)AfbAddVerbs) {
+        errorMsg = "(hoops) event invalid vcbData handle";
+        goto OnErrorExit;
+    }
+
+    // on first call we need to retreive original callback object from configJ
+    if (!vcbData->callback)
+    {
+        json_object *callbackJ=json_object_object_get(vcbData->configJ, "callback");
+        if (!callbackJ) {
+            errorMsg = "(hoops) event no callback defined";
+            goto OnErrorExit;
+        }
+
+        // extract Python callable from callbackJ
+        vcbData->callback = json_object_get_userdata (callbackJ);
+        if (!vcbData->callback || !PyCallable_Check((PyObject*)vcbData->callback)) {
+            errorMsg = "(hoops) event has no callable function";
+            goto OnErrorExit;
+        }
+    }
+
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nparams+PY_THREE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
+    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, PyUnicode_FromString(evtName));
-    PyTuple_SetItem (argsP, 2, ctx->handler.userdataP);
-    if (ctx->handler.userdataP) Py_IncRef(ctx->handler.userdataP);
+    if (vcbData->userdata) {
+        Py_IncRef((PyObject*)vcbData->userdata);
+        PyTuple_SetItem (argsP, 2, (PyObject*)vcbData->userdata);
+    } else {
+        PyTuple_SetItem (argsP, 2, Py_None);
+    }
 
     // retreive event data and convert them to json
     for (int idx = 0; idx < nparams; idx++)
@@ -65,7 +94,7 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
     }
 
     // call python event handler code
-    PyObject *resultP= PyObject_Call (ctx->handler.callbackP, argsP, NULL);
+    PyObject *resultP= PyObject_Call ((PyObject*)vcbData->callback, argsP, NULL);
     if (!resultP) {
         errorMsg="Event handler callback fail";
         goto OnErrorExit;
@@ -73,13 +102,10 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
 
     // free json_object
     for (int idx=0; idx < nparams; idx++) json_object_put(argsJ[idx]);
-
-    // update statistic
-    ctx->handler.count++;
     return;
 
 OnErrorExit:
-    PY_DBG_ERROR(ctx, errorMsg);
+    PY_DBG_ERROR(glue, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return;
 }
@@ -176,44 +202,29 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
     AfbHandleT *glue= PyRqtNew(afbRqt);
 
     // on first call we compile configJ to boost following py api/verb calls
-    json_object *configJ = afb_req_get_vcbdata(afbRqt);
-    if (!configJ)
-    {
-        errorMsg = "fail get verb config";
+    AfbVcbDataT *vcbData= afb_req_get_vcbdata(afbRqt);
+    if (vcbData->magic != (void*)AfbAddVerbs) {
+        errorMsg = "(hoops) verb invalid vcbData handle";
         goto OnErrorExit;
     }
 
-    pyVerbDataT *pyVcData = json_object_get_userdata(configJ);
-    if (!pyVcData)
+    // on first call we need to retreive original callback object from configJ
+    if (!vcbData->callback)
     {
-        json_object *funcJ=NULL;
-        pyVcData = calloc(1, sizeof(pyVerbDataT));
-        json_object_set_userdata(configJ, pyVcData, PyFreeJsonCtx);
-        pyVcData->magic = GLUE_VCDATA_MAGIC;
-
-        err = wrap_json_unpack(configJ, "{ss so s?s}", "verb", &pyVcData->verb, "callback", &funcJ, "info", &pyVcData->info);
-        if (err)
-        {
-            errorMsg = "invalid verb json config";
+        json_object *callbackJ=json_object_object_get(vcbData->configJ, "callback");
+        if (!callbackJ) {
+            errorMsg = "(hoops) verb no callback defined";
             goto OnErrorExit;
         }
 
-        // extract Python callable from funcJ
-        pyVcData->funcP = json_object_get_userdata (funcJ);
-        if (!pyVcData->funcP || !PyCallable_Check(pyVcData->funcP)) {
+        // extract Python callable from callbackJ
+        vcbData->callback = json_object_get_userdata (callbackJ);
+        if (!vcbData->callback || !PyCallable_Check(vcbData->callback)) {
             errorMsg = "(hoops) verb has no callable function";
             goto OnErrorExit;
         }
     }
-    else
-    {
-        if (pyVcData->magic != GLUE_VCDATA_MAGIC)
-        {
-            errorMsg = "fail to converting json to py table";
-            goto OnErrorExit;
-        }
-    }
-    glue->rqt.vcData = pyVcData;
+    glue->rqt.vcbData = vcbData;
 
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
@@ -233,7 +244,7 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
         PyTuple_SetItem(argsP, idx+1, jsonToPyObj(argsJ[idx]));
     }
 
-    PyObject *resultP= PyObject_Call (pyVcData->funcP, argsP, NULL);
+    PyObject *resultP= PyObject_Call ((PyObject*)vcbData->callback, argsP, NULL);
     if (!resultP) goto OnErrorExit;
     Py_DECREF(argsP);
 
@@ -405,7 +416,9 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
         const afb_verb_t *afbVerb = afb_api_v4_verb_at(apiv4, idx);
         if (!afbVerb) break;
         if (afbVerb->vcbdata != glue) {
-            json_object_array_add(verbsJ, (json_object *)afbVerb->vcbdata);
+            AfbVcbDataT *vcbData= afbVerb->vcbdata;
+            if (vcbData->magic != AfbAddVerbs) continue;
+            json_object_array_add(verbsJ, vcbData->configJ);
             json_object_get(verbsJ);
         }
     }

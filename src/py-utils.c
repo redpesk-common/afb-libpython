@@ -529,6 +529,6 @@ int GlueReply(AfbHandleT *glue, long status, long nbreply, afb_data_t *reply)
     return 0;
 
 OnErrorExit:
-    PY_DBG_ERROR(glue, "unique response require");
+    GLUE_DBG_ERROR(glue, "unique response require");
     return -1;
 }

@@ -31,13 +31,13 @@
 #define SUBCALL_MAX_RPLY 8
 
 typedef enum {
-    PY_NO_ARG=0,
-    PY_ONE_ARG=1,
-    PY_TWO_ARG=2,
-    PY_THREE_ARG=3,
-    PY_FOUR_ARG=4,
-    PY_FIVE_ARG=5,
-    PY_SIX_ARG=6,
+    GLUE_NO_ARG=0,
+    GLUE_ONE_ARG=1,
+    GLUE_TWO_ARG=2,
+    GLUE_THREE_ARG=3,
+    GLUE_FOUR_ARG=4,
+    GLUE_FIVE_ARG=5,
+    GLUE_SIX_ARG=6,
 } pyNumberFixArgs;
 
 typedef enum {
@@ -73,7 +73,6 @@ struct PyApiHandleS {
 
 struct PyRqtHandleS {
     struct PyApiHandleS *api;
-    AfbVcbDataT   *vcbData;
     PyThreadState *pyState;
     int replied;
     afb_req_t afb;

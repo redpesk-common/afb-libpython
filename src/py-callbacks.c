@@ -70,7 +70,7 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
 
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(nparams+PY_THREE_ARG);
+    PyObject *argsP= PyTuple_New(nparams+GLUE_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, PyUnicode_FromString(evtName));
     if (vcbData->userdata) {
@@ -90,7 +90,7 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
             goto OnErrorExit;
         }
         argsJ[idx]  = afb_data_ro_pointer(argsD[idx]);
-        PyTuple_SetItem(argsP, idx+PY_THREE_ARG, jsonToPyObj(argsJ[idx]));
+        PyTuple_SetItem(argsP, idx+GLUE_THREE_ARG, jsonToPyObj(argsJ[idx]));
     }
 
     // call python event handler code
@@ -105,7 +105,7 @@ void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, af
     return;
 
 OnErrorExit:
-    PY_DBG_ERROR(glue, errorMsg);
+    GLUE_DBG_ERROR(glue, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return;
 }
@@ -144,7 +144,7 @@ void GlueSchedWaitCb (int signum, void *userdata, struct afb_sched_lock *afbLock
 
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(PY_THREE_ARG);
+    PyObject *argsP= PyTuple_New(GLUE_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeHandleCb));
     PyTuple_SetItem (argsP, 1, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 2, ctx->lock.userdataP);
@@ -157,7 +157,7 @@ void GlueSchedWaitCb (int signum, void *userdata, struct afb_sched_lock *afbLock
     return;
 
 OnErrorExit:
-    PY_DBG_ERROR(ctx, errorMsg);
+    GLUE_DBG_ERROR(ctx, errorMsg);
 }
 
 void GlueSchedTimeoutCb (int signum, void *userdata) {
@@ -170,7 +170,7 @@ void GlueSchedTimeoutCb (int signum, void *userdata) {
     if (signum != SIGABRT) {
         // prepare calling argument list
         PyThreadState_Swap(GetPrivateData());
-        PyObject *argsP= PyTuple_New(PY_TWO_ARG);
+        PyObject *argsP= PyTuple_New(GLUE_TWO_ARG);
         PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->handle, GLUE_AFB_UID, NULL));
         PyTuple_SetItem (argsP, 1, ctx->userdataP);
 
@@ -186,7 +186,7 @@ void GlueSchedTimeoutCb (int signum, void *userdata) {
     return;
 
 OnErrorExit:
-    PY_DBG_ERROR(ctx->handle, errorMsg);
+    GLUE_DBG_ERROR(ctx->handle, errorMsg);
     Py_DECREF (ctx->callbackP);
     if (ctx->userdataP) Py_DECREF (ctx->userdataP);
     free (ctx);
@@ -224,11 +224,10 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
             goto OnErrorExit;
         }
     }
-    glue->rqt.vcbData = vcbData;
 
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(nparams+PY_ONE_ARG);
+    PyObject *argsP= PyTuple_New(nparams+GLUE_ONE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
 
     // retreive input arguments and convert them to json
@@ -275,13 +274,12 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
 
             // respond request and free ressources.
             GlueReply(glue, status, count-1, reply);
-            for (int idx=0; idx <nparams; idx++) json_object_put(argsJ[idx]);
 
         } else if (PyLong_Check(resultP)) {
             status= PyLong_AsLong(resultP);
             GlueReply(glue, status, 0, NULL);
         }
-
+        for (int idx=0; idx <nparams; idx++) json_object_put(argsJ[idx]);
         Py_DECREF (resultP);
     }
 
@@ -298,13 +296,13 @@ OnErrorExit:
 }
 
 int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata) {
-    AfbHandleT *ctx= (AfbHandleT*) userdata;
+    AfbHandleT *glue= (AfbHandleT*) userdata;
     static int orphan=0;
     const char *state;
     int status=0;
 
     // assert userdata validity
-    assert (ctx && ctx->magic == GLUE_API_MAGIC);
+    assert (glue && glue->magic == GLUE_API_MAGIC);
 
 
     switch (ctlid) {
@@ -314,7 +312,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
 
     case afb_ctlid_Pre_Init:
         state="config";
-        ctx->api.afb= apiv4;
+        glue->api.afb= apiv4;
         break;
 
     case afb_ctlid_Init:
@@ -326,7 +324,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
         break;
 
     case afb_ctlid_Orphan_Event:
-        GLUE_AFB_WARNING (ctx, "Orphan event=%s count=%d", ctlarg->orphan_event.name, orphan++);
+        GLUE_AFB_WARNING (glue, "Orphan event=%s count=%d", ctlarg->orphan_event.name, orphan++);
         state="orphan";
         break;
 
@@ -338,15 +336,15 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
         break;
     }
 
-    if (!ctx->api.ctrlCb) {
-        GLUE_AFB_WARNING(ctx,"GlueCtrlCb: No init callback state=[%s]", state);
+    if (!glue->api.ctrlCb) {
+        GLUE_AFB_WARNING(glue,"GlueCtrlCb: No init callback state=[%s]", state);
 
     } else {
 
         // effectively exec PY script code
-        GLUE_AFB_NOTICE(ctx,"GlueCtrlCb: state=[%s]", state);
+        GLUE_AFB_NOTICE(glue,"GlueCtrlCb: state=[%s]", state);
         PyThreadState_Swap(GetPrivateData());
-        PyObject *resultP= PyObject_CallFunction (ctx->api.ctrlCb, "Os", PyCapsule_New(ctx, GLUE_AFB_UID, NULL), state);
+        PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, NULL), state);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
@@ -354,7 +352,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
     return status;
 
 OnErrorExit:
-    PY_DBG_ERROR(afbMain, "fail api control");
+    GLUE_DBG_ERROR(afbMain, "fail api control");
     return -1;
 }
 
@@ -371,7 +369,7 @@ int GlueStartupCb(void *callback, void *userdata)
     {
         // in 3.10 should be replace by PyObject_CallOneArg(callbackP, handleP);
         PyThreadState_Swap(GetPrivateData());
-        PyObject *argsP= PyTuple_New(PY_ONE_ARG);
+        PyObject *argsP= PyTuple_New(GLUE_ONE_ARG);
         PyTuple_SetItem (argsP, 0, PyCapsule_New(userdata, GLUE_AFB_UID, NULL));
         PyObject *resultP= PyObject_Call (callbackP, argsP, NULL);
         if (!resultP) goto OnErrorExit;
@@ -381,7 +379,7 @@ int GlueStartupCb(void *callback, void *userdata)
     return status;
 
 OnErrorExit:
-    PY_DBG_ERROR(afbMain, "Aborted: Mainloop Startup");
+    GLUE_DBG_ERROR(afbMain, "Aborted: Mainloop Startup");
     return -1;
 }
 
@@ -396,7 +394,6 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 
     // extract uid + info from API config
     const char  *uid, *info=NULL;
-
     PyObject *uidP = PyDict_GetItemString (glue->api.configP, "uid");
     PyObject *infoP= PyDict_GetItemString (glue->api.configP, "info");
 
@@ -445,7 +442,7 @@ static void GluePcallFunc (void *userdata, int status, unsigned nreplies, afb_da
 
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(nreplies+PY_THREE_ARG);
+    PyObject *argsP= PyTuple_New(nreplies+GLUE_THREE_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->glue, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
     PyTuple_SetItem (argsP, 2, ctx->userdataP);
@@ -505,7 +502,7 @@ void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount) {
     long status=0;
 
     PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(PY_TWO_ARG);
+    PyObject *argsP= PyTuple_New(GLUE_TWO_ARG);
     PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
     PyTuple_SetItem (argsP, 1, ctx->timer.userdataP);
     if (ctx->timer.userdataP) Py_IncRef(ctx->timer.userdataP);
@@ -529,7 +526,7 @@ void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount) {
     return;
 
 OnErrorExit:
-    PY_DBG_ERROR(afbMain, errorMsg);
+    GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
 OnUnrefExit:
     GlueTimerClear(ctx);

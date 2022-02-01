@@ -28,15 +28,15 @@ from afbpyglue import libafb
 # static variables
 count=0
 tic=0
-pyEvent=None
+event=None
 
 # timer handle callback
-def timerCB (timer, evt):
+def timerCB (timer, evt, count):
     global tic
     tic += 1
     libafb.notice (evt, "timer':%s' event:%s' count=%d,", libafb.config(timer, 'uid'), libafb.config(evt, 'uid'), tic)
     libafb.evtpush(evt, {'tic':tic})
-    #return -1 # should exit timer (TBD Jose afb_timer_unref )
+    #return -1 # should exit timer 
 
  # ping/pong event func
 def pingCB(rqt, *args):
@@ -47,18 +47,18 @@ def pingCB(rqt, *args):
 
 def subscribeCB(rqt, *args):
     libafb.notice  (rqt, "subscribing api event")
-    libafb.evtsubscribe (rqt, pyEvent)
+    libafb.evtsubscribe (rqt, event)
     return 0 # implicit respond
 
 def unsubscribeCB(rqt, *args):
     libafb.notice  (rqt, "subscribing api event")
-    libafb.evtunsubscribe (rqt, pyEvent)
+    libafb.evtunsubscribe (rqt, event)
     return 0 # implicit respond
 
 
 # When Api ready (state==init) start event & timer
 def apiControlCb(api, state):
-    global pyEvent
+    global event
 
     apiname= libafb.config(api, "api")
     #WARNING: from Python 3.10 use switch-case as elseif replacement
@@ -69,11 +69,11 @@ def apiControlCb(api, state):
         tictime= libafb.config(api,'tictime')*1000 # move from second to ms
         libafb.notice(api, "api=[%s] start event tictime=%dms", apiname, tictime)
 
-        pyEvent= libafb.evtnew (api,{'uid':'py-event', 'info':'py testing event sample'})
-        if (pyEvent is None):
+        event= libafb.evtnew (api,{'uid':'py-event', 'info':'py testing event sample'})
+        if (event is None):
             raise Exception ('fail to create event')
 
-        timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, pyEvent)
+        timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, event)
         if (timer is None):
             raise Exception ('fail to create timer')
 
@@ -87,7 +87,7 @@ def mainLoopCb(binder):
     libafb.notice(binder, "startBinderCb=[%s]", libafb.config(binder, "uid"))
     # implement here after your startup/eventing code
     # ...
-    return 0 # negative status force mainloop exit
+    return 0 # negative status force loopstart exit
 
 # api verb list
 apiVerbs = [
@@ -124,8 +124,8 @@ binder= libafb.binder(binderOpts)
 myapi = libafb.apiadd(apiOpts)
 
 # should never return
-status= libafb.mainloop(mainLoopCb)
+status= libafb.loopstart(mainLoopCb)
 if status < 0:
-    libafb.error (binder, "OnError MainLoop Exit")
+    libafb.error (binder, "OnError loopstart Exit")
 else:
-    libafb.notice(binder, "OnSuccess Mainloop Exit")
+    libafb.notice(binder, "OnSuccess loopstart Exit")

@@ -20,7 +20,6 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
  */
-
 #include <Python.h>
 #include <frameobject.h>
 
@@ -41,15 +40,15 @@ static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
 static pthread_key_t dataKey;
 
 typedef struct {
-    pyGlueMagicsE magic;
+    void* magic;
     PyThreadState *pyInterp;
     void *ctx;
 } PyThreadUserDataT;
 
 static void FreePrivateData(void *ctx) {
     PyThreadUserDataT *data= (PyThreadUserDataT*)ctx;
-    assert (data && data->magic==GLUE_THREAD_DATA);
-    data->magic=-1;
+    assert (data && data->magic==GetPrivateData);
+    data->magic=NULL;
     Py_EndInterpreter(data->pyInterp);
     free (data);
 }
@@ -63,17 +62,17 @@ PyThreadState *GetPrivateData(void) {
     PyThreadUserDataT *tPrivate = pthread_getspecific(dataKey);
     if (!tPrivate) {
         tPrivate= calloc (1, sizeof(PyThreadUserDataT));
-        tPrivate->magic= GLUE_THREAD_DATA;
+        tPrivate->magic= (void*)GetPrivateData;
         tPrivate->pyInterp= Py_NewInterpreter();
         pthread_setspecific(dataKey, tPrivate);
     }
 
-    assert (tPrivate && tPrivate->magic == GLUE_THREAD_DATA);
+    assert (tPrivate && tPrivate->magic == GetPrivateData);
     return tPrivate->pyInterp;
 }
 
 // initialise per thread user data key
-int InitPrivateData (AfbHandleT*glue) {
+int InitPrivateData (GlueHandleT*glue) {
 #if PY_MINOR_VERSION < 7
     PyEval_InitThreads(); // from 3.7 this is useless
 #endif
@@ -83,7 +82,7 @@ int InitPrivateData (AfbHandleT*glue) {
 }
 
 // retreive API from py handle
-afb_api_t GlueGetApi(AfbHandleT*glue) {
+afb_api_t GlueGetApi(GlueHandleT*glue) {
    afb_api_t afbApi;
     switch (glue->magic) {
         case GLUE_API_MAGIC:
@@ -100,6 +99,9 @@ afb_api_t GlueGetApi(AfbHandleT*glue) {
             break;
         case GLUE_EVT_MAGIC:
             afbApi= glue->evt.apiv4;
+            break;
+        case GLUE_TIMER_MAGIC:
+            afbApi= glue->timer.apiv4;
             break;
         default:
             afbApi=NULL;
@@ -185,7 +187,7 @@ OnErrorExit:
     return errorMsg;
 }
 
-void GlueVerbose(AfbHandleT *handle, int level, const char *file, int line, const char *func, const char *fmt, ...)
+void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, const char *func, const char *fmt, ...)
 {
     va_list args;
 
@@ -209,7 +211,7 @@ void GlueVerbose(AfbHandleT *handle, int level, const char *file, int line, cons
     return;
 }
 
-void PyInfoDbg (AfbHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) {
+void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) {
     char const *info=NULL, *filename=NULL;
     int linenum=-1;
     va_list args;
@@ -259,7 +261,7 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
         goto OnErrorExit;
     }
 
-    AfbHandleT *handle= PyCapsule_GetPointer (afbHandleP, GLUE_AFB_UID);
+    GlueHandleT *handle= PyCapsule_GetPointer (afbHandleP, GLUE_AFB_UID);
     if (!handle) {
         errorMsg= "syntax afbprint(handle: is not a valid Glue handle)";
         goto OnErrorExit;
@@ -478,7 +480,7 @@ OnErrorExit:
 
 static void PyRqtFree(void *userdata)
 {
-    AfbHandleT *glue= (AfbHandleT*)userdata;
+    GlueHandleT *glue= (GlueHandleT*)userdata;
     assert (glue && (glue->magic == GLUE_RQT_MAGIC));
 
     free(glue);
@@ -486,14 +488,14 @@ static void PyRqtFree(void *userdata)
 }
 
 // add a reference on Glue handle
-void PyRqtAddref(AfbHandleT *glue) {
+void PyRqtAddref(GlueHandleT *glue) {
     if (glue->magic == GLUE_RQT_MAGIC) {
         afb_req_unref (glue->rqt.afb);
     }
 }
 
 // add a reference on Glue handle
-void PyRqtUnref(AfbHandleT *glue) {
+void PyRqtUnref(GlueHandleT *glue) {
     if (glue->magic == GLUE_RQT_MAGIC) {
         afb_req_unref (glue->rqt.afb);
     }
@@ -501,15 +503,15 @@ void PyRqtUnref(AfbHandleT *glue) {
 }
 
 // allocate and push a py request handle
-AfbHandleT *PyRqtNew(afb_req_t afbRqt)
+GlueHandleT *PyRqtNew(afb_req_t afbRqt)
 {
     assert(afbRqt);
 
     // retreive interpreteur from API
-    AfbHandleT *Glue = afb_api_get_userdata(afb_req_get_api(afbRqt));
+    GlueHandleT *Glue = afb_api_get_userdata(afb_req_get_api(afbRqt));
     assert(Glue->magic == GLUE_API_MAGIC);
 
-    AfbHandleT *glue = (AfbHandleT *)calloc(1, sizeof(AfbHandleT));
+    GlueHandleT *glue = (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
     glue->magic = GLUE_RQT_MAGIC;
     glue->rqt.afb = afbRqt;
 
@@ -521,7 +523,7 @@ AfbHandleT *PyRqtNew(afb_req_t afbRqt)
 
 
 // reply afb request only once and unref py handle
-int GlueReply(AfbHandleT *glue, long status, long nbreply, afb_data_t *reply)
+int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply)
 {
     if (glue->rqt.replied) goto OnErrorExit;
     afb_req_reply(glue->rqt.afb, (int)status, (int)nbreply, reply);

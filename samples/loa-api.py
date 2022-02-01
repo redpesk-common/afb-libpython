@@ -6,11 +6,11 @@ Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END
 
 object:
     loa-api.py loanstrate how to use LOA and permission. While LOA can be tested outside of any context,
-    permission check requiere a valid Cynagora installation
+    permission check requirer a valid Cynagora installation
 
     - loa/set current LOA level to 1
     - loa/reset current LOA level to 0
-    - loa/check is protected by ACLS and requiere a LOA >=1 it display client session uuid
+    - loa/check is protected by ACLS and requirer a LOA >=1 it display client session uuid
 
     Api can be requested from REST|websocket from a browser on http:localhost:1234
 
@@ -64,13 +64,13 @@ loaVerbs = [
     {'uid':'py-ping' , 'verb':'ping'  , 'callback':pingCB    ,'auth':'anonymous', 'info':'py ping loa def'},
     {'uid':'py-set'  , 'verb':'set'   , 'callback':setLoaCB  ,'auth':'anonymous', 'info':'set LOA to 1'},
     {'uid':'py-reset', 'verb':'reset' , 'callback':resetLoaCB,'auth':'anonymous', 'info':'reset LOA to 0'},
-    {'uid':'py-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'authorized', 'info':'protected API requiere LOA>=1'},
+    {'uid':'py-check', 'verb':'check' , 'callback':checkLoaCB,'auth':'authorized', 'info':'protected API requirer LOA>=1'},
 ]
 
 # define permissions
 loaAlcs = [
     ['anonymous'      , 'loa', 0],
-    ['authorized'      , 'loa', 1],
+    ['authorized'     , 'loa', 1],
     ['perm-1'         , 'key', 'permission-1'],
     ['perm-2'         , 'key', 'permission-2'],
     ['login-and-roles', 'and', ['perm-2', 'perm-1']],
@@ -105,9 +105,9 @@ binder= libafb.binder(loaOpts)
 myapi = libafb.apiadd(loaApi)
 
 # should never return
-status= libafb.mainloop(mainLoopCB)
+status= libafb.loopstart(mainLoopCB)
 if status < 0:
-    libafb.error (binder, "OnError MainLoop Exit")
+    libafb.error (binder, "OnError loopstart Exit")
 else:
-    libafb.notice(binder, "OnSuccess Mainloop Exit")
+    libafb.notice(binder, "OnSuccess loopstart Exit")
 

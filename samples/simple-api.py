@@ -71,9 +71,9 @@ demoOpts = {
 binder= libafb.binder(demoOpts)
 myapi = libafb.apiadd(demoApi)
 
-# enter mainloop
-status= libafb.mainloop(loopBinderCb)
+# enter loopstart
+status= libafb.loopstart(loopBinderCb)
 if status < 0 :
-    libafb.error (binder, "OnError MainLoop Exit")
+    libafb.error (binder, "OnError loopstart Exit")
 else:
-    libafb.notice(binder, "OnSuccess Mainloop Exit")
+    libafb.notice(binder, "OnSuccess loopstart Exit")

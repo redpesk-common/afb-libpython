@@ -37,7 +37,7 @@
 
 
 typedef struct {
-    AfbHandleT  *glue;
+    GlueHandleT  *glue;
     PyObject *callbackP;
     PyObject *userdataP;
 } PyAsyncCtxT;
@@ -52,7 +52,8 @@ int  GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *u
 int  GlueStartupCb(void *config, void *userdata);
 void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]);
 void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount);
-void GlueTimerClear(AfbHandleT *glue);
+void GlueTimerClear(GlueHandleT *glue);
 
 void GlueSchedTimeoutCb (int signum, void *userdata);
-void GlueSchedWaitCb (int signum, void *userdata, struct afb_sched_lock *afbLock);
+void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock);
+void GlueFreeHandleCb(PyObject *capculeP);

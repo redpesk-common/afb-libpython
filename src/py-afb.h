@@ -30,26 +30,6 @@
 #define GLUE_AFB_UID "#afb#"
 #define SUBCALL_MAX_RPLY 8
 
-typedef enum {
-    GLUE_NO_ARG=0,
-    GLUE_ONE_ARG=1,
-    GLUE_TWO_ARG=2,
-    GLUE_THREE_ARG=3,
-    GLUE_FOUR_ARG=4,
-    GLUE_FIVE_ARG=5,
-    GLUE_SIX_ARG=6,
-} pyNumberFixArgs;
-
-typedef enum {
-    GLUE_BINDER_MAGIC=936714582,
-    GLUE_API_MAGIC=852951357,
-    GLUE_RQT_MAGIC=684756123,
-    GLUE_EVT_MAGIC=894576231,
-    GLUE_TIMER_MAGIC=4628170,
-    GLUE_LOCK_MAGIC=379645852,
-    GLUE_SCHED_MAGIC=73498127,
-    GLUE_THREAD_DATA=123987582,
-} pyGlueMagicsE;
 
 struct PyBinderHandleS {
     AfbBinderHandleT *afb;
@@ -57,7 +37,7 @@ struct PyBinderHandleS {
     PyThreadState *pyState;
 };
 
-struct PySchedWaitS {
+struct PyjobstartS {
     PyObject *callbackP;
     PyObject *userdataP;
     struct afb_sched_lock *afb;
@@ -81,6 +61,7 @@ struct PyRqtHandleS {
 struct PyTimerHandleS {
     const char *uid;
     afb_timer_t afb;
+    afb_api_t  apiv4;
     PyObject *callbackP;
     PyObject *configP;
     PyObject *userdataP;
@@ -88,7 +69,7 @@ struct PyTimerHandleS {
 };
 
 struct PyEvtHandleS {
-    const char *uid;
+    //const char *uid;
     const char *name;
     afb_event_t afb;
     PyObject *configP;
@@ -106,7 +87,7 @@ struct PyHandlerHandleS {
 };
 
 typedef struct {
-    pyGlueMagicsE magic;
+    GlueHandleMagicsE magic;
     //PyThreadState *pyState;
     //PyGILState_STATE glState;
     union {
@@ -115,16 +96,16 @@ typedef struct {
         struct PyApiHandleS api;
         struct PyRqtHandleS rqt;
         struct PyTimerHandleS timer;
-        struct PySchedWaitS lock;
+        struct PyjobstartS lock;
         struct PyHandlerHandleS handler;
     };
-} AfbHandleT;
+} GlueHandleT;
 
 typedef struct {
     int magic;
-    AfbHandleT *handle;
+    GlueHandleT *handle;
     PyObject *callbackP;
     PyObject *userdataP;
 } GlueHandleCbT;
 
-extern AfbHandleT *afbMain;
+extern GlueHandleT *afbMain;

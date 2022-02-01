@@ -25,26 +25,26 @@
 #include <Python.h>
 #include <json-c/json.h>
 
-void PyInfoDbg (AfbHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) ;
+void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) ;
 void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args);
-void GlueVerbose (AfbHandleT *afbHandle, int level, const char *file, int line, const char *func, const char *fmt, ...);
+void GlueVerbose (GlueHandleT *afbHandle, int level, const char *file, int line, const char *func, const char *fmt, ...);
 json_object *PyJsonDbg(const char *message);
 #define GLUE_AFB_INFO(Glue,...)    GlueVerbose (Glue,AFB_SYSLOG_LEVEL_INFO,__file__,__LINE__,__func__,__VA_ARGS__)
 #define GLUE_AFB_NOTICE(Glue,...)  GlueVerbose (Glue,AFB_SYSLOG_LEVEL_NOTICE,__file__,__LINE__,__func__,__VA_ARGS__)
 #define GLUE_AFB_WARNING(Glue,...) GlueVerbose (Glue,AFB_SYSLOG_LEVEL_WARNING,__file__,__LINE__,__func__,__VA_ARGS__)
 #define GLUE_AFB_ERROR(Glue,...)   GlueVerbose (Glue,AFB_SYSLOG_LEVEL_ERROR,__file__,__LINE__,__func__,__VA_ARGS__)
-#define GLUE_DBG_ERROR(Glue,...) PyInfoDbg (Glue, AFB_SYSLOG_LEVEL_ERROR, __func__, __VA_ARGS__);
+#define GLUE_DBG_ERROR(Glue,...)   PyInfoDbg (Glue, AFB_SYSLOG_LEVEL_ERROR, __func__, __VA_ARGS__);
 
 json_object *pyObjToJson(PyObject* objP);
 PyObject * jsonToPyObj(json_object *argsJ);
 void PyFreeJsonCtx (json_object *configJ, void *userdata) ;
 
-AfbHandleT *PyRqtNew(afb_req_t afbRqt);
-void PyRqtAddref(AfbHandleT *pyRqt);
-void PyRqtUnref(AfbHandleT *pyRqt);
-int InitPrivateData (AfbHandleT*glue);
+GlueHandleT *PyRqtNew(afb_req_t afbRqt);
+void PyRqtAddref(GlueHandleT *pyRqt);
+void PyRqtUnref(GlueHandleT *pyRqt);
+int InitPrivateData (GlueHandleT*glue);
 PyThreadState *GetPrivateData(void);
 
-afb_api_t GlueGetApi(AfbHandleT*glue);
-int GlueReply(AfbHandleT *glue, long status, long nbreply, afb_data_t *reply);
+afb_api_t GlueGetApi(GlueHandleT*glue);
+int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply);
 const char *PyPushAfbReply (PyObject *responseP, int start, unsigned nreplies, const afb_data_t *replies);

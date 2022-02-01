@@ -52,12 +52,12 @@ def asyncRespCB(rqt, status, ctx, *args):
 
 def syncCB(rqt, *args):
     libafb.notice  (rqt, "syncCB calling helloworld/testargs *args=%s", args)
-    status= libafb.callsync(rqt, "helloworld","testargs", args[0])[0]
+    response= libafb.callsync(rqt, "helloworld","testargs", args[0])
 
-    if status != 0:
-        libafb.reply (rqt, status, 'async helloworld/testargs fail')
+    if response.status != 0:
+        libafb.reply (rqt, response.status, 'async helloworld/testargs fail')
     else:
-        libafb.reply (rqt, status, 'async helloworld/testargs success')
+        libafb.reply (rqt, response.status, 'async helloworld/testargs success')
 
 def asyncCB(rqt, *args):
     userdata= "context-user-data"
@@ -67,35 +67,31 @@ def asyncCB(rqt, *args):
 
 def subscribeCB(rqt, *args):
     libafb.notice  (rqt, "subscribeCB helloworld-event/subscribe")
-    status= libafb.callsync(rqt, "helloworld-event","subscribe")[0]
-    return (status) # implicit response
+    response= libafb.callsync(rqt, "helloworld-event","subscribe")
+    return (response.status) # implicit response
 
 def unsubscribeCB(rqt, *args):
     libafb.notice  (rqt, "unsubscribeCB helloworld-event/unsubscribe")
-    status= libafb.callsync(rqt, "helloworld-event","unsubscribe")[0]
-    return (status) # implicit response
+    response= libafb.callsync(rqt, "helloworld-event","unsubscribe")
+    return (response.status) # implicit response
 
 # api control function
-def startApiCb(api, action):
+def controlApiCB(api, state):
     apiname= libafb.config(api, "api")
-    libafb.notice(api, "api=[%s] action=[%s]", apiname, action)
-
-    if action == 'config':
+    libafb.notice(api, "api=[%s] state=[%s]", apiname, state)
+    if state == 'config':
         libafb.notice(api, "config=%s", libafb.config(api))
-
     return 0 # ok
 
 # executed when binder and all api/interfaces are ready to serv
 def mainLoopCb(binder):
     libafb.notice(binder, "mainLoopCb=[%s]", libafb.config(binder, "uid"))
-
     # callsync return a tuple (status is [0])
-    status= libafb.callsync(binder, "helloworld-event", "startTimer")[0]
-    if status != 0:
+    response= libafb.callsync(binder, "helloworld-event", "startTimer")
+    if response.status != 0:
         # force an explicit response
-        libafb.notice  (binder, "helloworld-event/startTimer fail status=%d", status)
-
-    return status # negative status force mainloop exit
+        libafb.notice  (binder, "helloworld-event/startTimer fail status=%d", response.status, response.args)
+    return response.status # negative status force loopstart exit
 
 # api verb list
 demoVerbs = [
@@ -116,11 +112,11 @@ demoApi = {
     'uid'     : 'py-demo',
     'api'     : 'demo',
     'provide' : 'test',
-    'info'    : 'py api demo',
+    'info'    : 'py subcall demo',
     'verbose' : 9,
     'export'  : 'public',
     'require' : 'helloworld',
-    'control' : startApiCb,
+    'control' : controlApiCB,
     'events'  : demoEvents,
     'verbs'   : demoVerbs,
     'alias'   : ['/devtools:/usr/share/afb-ui-devtools/binder'],
@@ -158,8 +154,8 @@ libafb.binding(EventBinding)
 libafb.apiadd(demoApi)
 
 # should never return
-status= libafb.mainloop(mainLoopCb)
+status= libafb.loopstart(mainLoopCb)
 if status < 0:
-    libafb.error (binder, "OnError MainLoop Exit")
+    libafb.error (binder, "OnError loopstart Exit")
 else:
-    libafb.notice(binder, "OnSuccess Mainloop Exit")
+    libafb.notice(binder, "OnSuccess loopstart Exit")

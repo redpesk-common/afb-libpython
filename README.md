@@ -136,11 +136,11 @@ def asyncRespCB(rqt, status, ctx, *args):
 
 def syncCB(rqt, *args):
     libafb.notice  (rqt, "syncCB calling helloworld/testargs *args=%s", args)
-    status= libafb.callsync(rqt, "helloworld","testargs", args[0])[0]
-    if status != 0:
-        libafb.reply (rqt, status, 'async helloworld/testargs fail')
+    response= libafb.callsync(rqt, "helloworld","testargs", args[0])
+    if response.status != 0:
+        libafb.reply (rqt, response.status, 'async helloworld/testargs fail')
     else:
-        libafb.reply (rqt, status, 'async helloworld/testargs success')
+        libafb.reply (rqt, response.status, 'async helloworld/testargs success', response.args)
 
 def asyncCB(rqt, *args):
     userdata= "context-user-data"
@@ -224,17 +224,17 @@ Mainloop starts with libafb.mainloop('xxx'), where 'xxx' is an optional startup 
 * when startup function returns ```status!=0``` the binder immediately exit with corresponding status. This case is very typical when running pure synchronous api test.
 * set a shedwait lock and control the main loop from asynchronous events. This later case is mandatory when we have to start the mainloop to listen event, but still need to exit it to run a new set of test.
 
-Mainloop schedule wait is done with ```libafb.schedwait(binder,'xxx',timeout,{optional-user-data})```. Where 'xxx' is the name of the control callback that received the lock. Schedwait is released with ``` libafb.schedunlock(rqt/evt,lock,status)```
+Mainloop schedule wait is done with ```libafb.jobstart(binder,'xxx',timeout,{optional-user-data})```. Where 'xxx' is the name of the control callback that received the lock. jobstart is released with ``` libafb.jobkill(rqt/evt,lock,status)```
 
 In following example:
-* schedwait callback starts an event handler and passes the lock as evt context
+* jobstart callback starts an event handler and passes the lock as evt context
 * event handler: count the number of event and after 5 events release the lock.
 
 Note:
 
-* libafb.schedwait does not return before the lock is releases. As for events it is the developer responsibility to either carry the lock in a context or to store it within a share space, on order unlock function to access it.
+* libafb.jobstart does not return before the lock is releases. As for events it is the developer responsibility to either carry the lock in a context or to store it within a share space, on order unlock function to access it.
 
-* it is possible to serialize libafb.schedwait in order to build asynchronous cascade of asynchronous tests.
+* it is possible to serialize libafb.jobstart in order to build asynchronous cascade of asynchronous tests.
 
 ```python
 
@@ -244,10 +244,10 @@ Note:
         evtCount += 1
         if evtCount == 5:
             libafb.notice (evt, "*** EventReceiveCB releasing lock ***");
-            libafb.schedunlock (evt, lock, evtCount)
+            libafb.jobkill (evt, lock, evtCount)
 
 
-    def SchedWaitCB(api, lock, context):
+    def jobstartCB(api, lock, context):
         libafb.notice (api, "Schedlock timer-event handler register")
         libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
         return 0
@@ -259,7 +259,7 @@ Note:
         libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
 
         libafb.notice (binder, "waiting (%ds) for test to finish", timeout)
-        status= libafb.schedwait(binder, timeout, SchedWaitCB, None)
+        status= libafb.jobstart(binder, timeout, jobstartCB, None)
 
         libafb.notice (binder, "test done status=%d", status)
         return(status) # negative status force mainloop exit

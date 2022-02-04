@@ -41,7 +41,7 @@ Install your extention
 * codium --install-extension cpptools-linux.vsix
 * codium --install-extension ms-python-release.vsix
 
-WARNING: the lastest version is probably not compatible with your codium version.   
+WARNING: the lastest version is probably not compatible with your codium version.
 
 ## Import afb-pythonglue
 
@@ -155,7 +155,7 @@ Event should attached to an API. As binder as a building secret API, it is never
 
 ```python
     def apiControlCb(api, state):
-        global pyEvent
+        global evtid
 
         apiname= libafb.config(api, "api")
         #WARNING: from Python 3.10 use switch-case as elseif replacement
@@ -166,11 +166,11 @@ Event should attached to an API. As binder as a building secret API, it is never
             tictime= libafb.config(api,'tictime')*1000 # move from second to ms
             libafb.notice(api, "api=[%s] start event tictime=%dms", apiname, tictime)
 
-            pyEvent= libafb.evtnew (api,{'uid':'py-event', 'info':'py testing event sample'})
-            if (pyEvent is None):
+            evtid= libafb.evtnew (api,{'uid':'py-event', 'info':'py testing event sample'})
+            if (evtid is None):
                 raise Exception ('fail to create event')
 
-            timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, pyEvent)
+            timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, ["my_user-data"])
             if (timer is None):
                 raise Exception ('fail to create timer')
 
@@ -180,7 +180,7 @@ Event should attached to an API. As binder as a building secret API, it is never
         return 0 # 0=ok -1=fatal
 
         # later event can be push with evtpush
-        libafb.evtpush(event, {userdata})
+        libafb.evtpush(evtid, {userdata-1},...,{userdata-n})
 
 ```
 
@@ -189,12 +189,12 @@ Client event subscription is handle with evtsubscribe|unsubcribe api. Subscripti
 ```python
     def subscribeCB(rqt, *args):
         libafb.notice  (rqt, "subscribing api event")
-        libafb.evtsubscribe (rqt, pyEvent)
+        libafb.evtsubscribe (rqt, evtid)
         return 0 # implicit respond
 
     def unsubscribeCB(rqt, *args):
         libafb.notice  (rqt, "subscribing api event")
-        libafb.evtunsubscribe (rqt, pyEvent)
+        libafb.evtunsubscribe (rqt, evtid)
         return 0 # implicit respond
 ```
 
@@ -204,12 +204,13 @@ Timer are typically used to push event or to handle timeout. Timer is started wi
 In following example, timer runs forever every 'tictime' and call TimerCallback' function. This callback being used to send an event.
 
 ```python
-    def timerCB (timer, data):
-        libafb.notice  (rqt, "evttimerCB name=%s data=%s", name, data)
+    def timerCB (timer, count, userdata):
+        libafb.notice  (rqt, "evttimerCB name=%s data=%s", name, userdata)
+        # return -1 should terminate timer
 
     timer= libafb.timernew (api,
         {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}
-        , pyEvent)
+        , evtid)
     if (timer is None):
         raise Exception ('fail to create timer')
 ```

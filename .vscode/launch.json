@@ -42,7 +42,20 @@
             "env": {
                 "LD_LIBRARY_PATH":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"
             },
-        }, 
+        },
+        {
+            // extention: codeLLDB-vadimcn
+            "name": "loa-py",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/usr/bin/python3",
+            "initCommands": ["target stop-hook add -n _start -o continue"],
+            "cwd": "${workspaceFolder}",
+            "args": ["./samples/loa-api.py"],
+            "env": {
+                "LD_LIBRARY_PATH":"${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64:"
+            },
+        },
         {
             // extention: codeLLDB-vadimcn
             "name": "test-py",

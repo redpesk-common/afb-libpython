@@ -69,7 +69,7 @@ static PyObject *PyResponseNewCb (PyTypeObject *type, PyObject *argsP, PyObject 
     return (PyObject *)response;
 
 OnErrorExit:
-   PyErr_SetString(PyExc_RuntimeError, "syntax response(status, args)"); 
+   PyErr_SetString(PyExc_RuntimeError, "syntax response(status, args)");
    return NULL;
 }
 
@@ -83,7 +83,7 @@ static int GlueRepInitProc (PyObject *self, PyObject *argsP, PyObject *kwds) {
     return 0;
 
 OnErrorExit:
-   PyErr_SetString(PyExc_RuntimeError, "syntax response(status, args)"); 
+   PyErr_SetString(PyExc_RuntimeError, "syntax response(status, args)");
    return -1;
 }
 
@@ -212,9 +212,9 @@ static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
                 errorMsg="APi control func defined but but callable";
                 goto OnErrorExit;
             }
-            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, GlueCtrlCb, GlueInfoCb, GlueVerbCb, GlueEvtHandlerCb, glue);
+            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, GlueCtrlCb, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
         } else {
-            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, NULL, GlueInfoCb, GlueVerbCb, GlueEvtHandlerCb, glue);
+            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, NULL, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
         }
     }
     if (errorMsg)
@@ -281,7 +281,7 @@ static PyObject* GlueGetConfig(PyObject *self, PyObject *argsP)
         configP = glue->timer.configP;
         break;
     case GLUE_EVT_MAGIC:
-        configP = glue->evt.configP;
+        configP = glue->event.configP;
         break;
     default:
         errorMsg = "GlueGetConfig: unsupported py/afb handle";
@@ -426,25 +426,23 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
     }
 
-    PyAsyncCtxT *cbHandle= calloc(1,sizeof(PyAsyncCtxT));
-    cbHandle->glue= glue;
-    cbHandle->callbackP= callbackP;
-    cbHandle->userdataP= userdataP;
-    Py_IncRef(cbHandle->callbackP);
+    GlueCallHandleT *handle= calloc(1,sizeof(GlueCallHandleT));
+    handle->glue= glue;
+    handle->magic= GLUE_CALL_MAGIC;
+    handle->async.callbackP= callbackP;
+    handle->async.userdataP= userdataP;
+    Py_IncRef(handle->async.callbackP);
 
     switch (glue->magic) {
         case GLUE_RQT_MAGIC:
-            afb_req_subcall (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, GlueRqtSubcallCb, (void*)cbHandle);
+            afb_req_subcall (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, GlueRqtSubcallCb, (void*)handle);
             break;
-        case GLUE_LOCK_MAGIC:
-        case GLUE_API_MAGIC:
-        case GLUE_BINDER_MAGIC:
-            afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params, GlueApiSubcallCb, (void*)cbHandle);
-            break;
-
         default:
-            errorMsg = "handle should be a req|api";
-            goto OnErrorExit;
+            if (!GlueGetApi(glue)) {
+                errorMsg= "invalid api handle";
+                goto OnErrorExit;
+            }
+            afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params, GlueApiSubcallCb, (void*)handle);
     }
     Py_RETURN_NONE;
 
@@ -491,7 +489,7 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
         case GLUE_RQT_MAGIC:
             err= afb_req_subcall_sync (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, &status, &nreplies, replies);
             break;
-        case GLUE_LOCK_MAGIC:
+        case GLUE_JOB_MAGIC:
         case GLUE_API_MAGIC:
         case GLUE_BINDER_MAGIC:
             err= afb_api_call_sync (GlueGetApi(glue), apiname, verbname, (int)index, params, &status, &nreplies, replies);
@@ -541,8 +539,8 @@ static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
     long index=0;
 
     if (count < GLUE_ONE_ARG) goto OnErrorExit;
-    GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue || glue->magic != GLUE_EVT_MAGIC) goto OnErrorExit;
+    afb_event_t evtid= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
+    if (!evtid || !afb_event_is_valid(evtid)) goto OnErrorExit;
 
     // get response from PY and push them as afb-v4 object
     for (index= 0; index < count-GLUE_ONE_ARG; index++)
@@ -556,13 +554,12 @@ static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
     }
 
-    int status = afb_event_push(glue->evt.afb, (int) index, params);
+    int status = afb_event_push(evtid, (int) index, params);
     if (status < 0)
     {
         errorMsg = "afb_event_push fail sending event";
         goto OnErrorExit;
     }
-    glue->evt.count++;
     Py_RETURN_NONE;
 
 OnErrorExit:
@@ -573,7 +570,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtSubscribe(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: subscribe(rqt, event)";
+    const char *errorMsg = "syntax: subscribe(rqt,eventid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_TWO_ARG) goto OnErrorExit;
@@ -581,10 +578,10 @@ static PyObject* GlueEvtSubscribe(PyObject *self, PyObject *argsP)
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC) goto OnErrorExit;
 
-    GlueHandleT* handle= PyCapsule_GetPointer(PyTuple_GetItem(argsP,1), GLUE_AFB_UID);
-    if (!handle || handle->magic != GLUE_EVT_MAGIC) goto OnErrorExit;
+    afb_event_t evtid= PyCapsule_GetPointer(PyTuple_GetItem(argsP,1), GLUE_AFB_UID);
+    if (!evtid || !afb_event_is_valid(evtid)) goto OnErrorExit;
 
-    int err = afb_req_subscribe(glue->rqt.afb, handle->evt.afb);
+    int err = afb_req_subscribe(glue->rqt.afb, evtid);
     if (err)
     {
         errorMsg = "fail subscribing afb event";
@@ -600,7 +597,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: unsubscribe(rqt, event)";
+    const char *errorMsg = "syntax: unsubscribe(rqt,eventid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_TWO_ARG) goto OnErrorExit;
@@ -608,10 +605,10 @@ static PyObject* GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC) goto OnErrorExit;
 
-    GlueHandleT* handle= PyCapsule_GetPointer(PyTuple_GetItem(argsP,1), GLUE_AFB_UID);
-    if (!handle || handle->magic != GLUE_EVT_MAGIC) goto OnErrorExit;
+    afb_event_t evtid= PyCapsule_GetPointer(PyTuple_GetItem(argsP,1), GLUE_AFB_UID);
+    if (!evtid || !afb_event_is_valid(evtid)) goto OnErrorExit;
 
-    int err = afb_req_unsubscribe(glue->rqt.afb, handle->evt.afb);
+    int err = afb_req_unsubscribe(glue->rqt.afb, evtid);
     if (err)
     {
         errorMsg = "(hoops) afb_req_unsubscribe fail";
@@ -627,44 +624,28 @@ OnErrorExit:
 
 static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax:  eventnew(api, {'uid':uid, 'name':name, ['info':info]})";
+    const char *errorMsg = "syntax: eventid= eventnew(api,label)";
+    afb_event_t evtid;
     int err;
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_TWO_ARG) goto OnErrorExit;
 
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue || glue->magic != GLUE_API_MAGIC) goto OnErrorExit;
+    if (!glue || !GlueGetApi(glue)) goto OnErrorExit;
 
-    // create a new binder event
-    errorMsg = "evtconf={'uid':'xxx', 'name':'yyyy'}";
-    GlueHandleT *pyEvt = calloc(1, sizeof(GlueHandleT));
-    pyEvt->magic = GLUE_EVT_MAGIC;
-    pyEvt->evt.apiv4= GlueGetApi(glue);
+    const char *label= PyUnicode_AsUTF8(PyTuple_GetItem(argsP,1));
+    if (!label) goto OnErrorExit;
 
-    pyEvt->evt.configP = PyTuple_GetItem(argsP,1);
-    if (!PyDict_Check(pyEvt->evt.configP)) goto OnErrorExit;
-    Py_IncRef(pyEvt->evt.configP);
-
-    PyObject *uidP= PyDict_GetItemString(pyEvt->evt.configP, "uid");
-    if (!uidP || !PyUnicode_Check(uidP)) goto OnErrorExit;
-
-    PyObject *nameP= PyDict_GetItemString(pyEvt->evt.configP, "name");
-    if (!nameP) pyEvt->evt.name = PyUnicode_AsUTF8(uidP);
-    else {
-        if (!PyUnicode_Check(nameP)) goto OnErrorExit;
-        pyEvt->evt.name= PyUnicode_AsUTF8(nameP);
-    }
-
-    err= afb_api_new_event(glue->api.afb, pyEvt->evt.name, &pyEvt->evt.afb);
+    err= afb_api_new_event(glue->api.afb, strdup(label), &evtid);
     if (err)
     {
         errorMsg = "(hoops) afb-afb_api_new_event fail";
         goto OnErrorExit;
     }
 
-    // push event handler as a PY opaque handle
-    return PyCapsule_New(pyEvt, GLUE_AFB_UID, NULL);
+    // push event afb handle as a PY opaque handle
+    return PyCapsule_New(evtid, GLUE_AFB_UID, NULL);
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
@@ -688,7 +669,7 @@ static PyObject* GlueVerbAdd(PyObject *self, PyObject *argsP)
     PyObject *userdataP= PyTuple_GetItem(argsP,2);
     if (userdataP) Py_IncRef(userdataP);
 
-    errorMsg= AfbAddOneVerb (afbMain->binder.afb, glue->api.afb, configJ, GlueVerbCb, userdataP);
+    errorMsg= AfbAddOneVerb (afbMain->binder.afb, glue->api.afb, configJ, GlueApiVerbCb, userdataP);
     if (errorMsg) goto OnErrorExit;
 
     Py_RETURN_NONE;
@@ -735,7 +716,7 @@ static PyObject* GlueTimerAddref(PyObject *self, PyObject *argsP) {
 
     afb_timer_addref (glue->timer.afb);
     Py_IncRef(glue->timer.configP);
-    glue->timer.usage++;
+    glue->usage++;
     Py_RETURN_NONE;
 
 OnErrorExit:
@@ -752,7 +733,7 @@ static PyObject* GlueTimerUnref(PyObject *self, PyObject *argsP) {
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_TIMER_MAGIC) goto OnErrorExit;
 
-    GlueTimerClear(glue);
+    GlueFreeHandleCb(glue);
     Py_RETURN_NONE;
 
 OnErrorExit:
@@ -774,43 +755,38 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     afb_api_t apiv4= GlueGetApi(glue);
     if (!apiv4) goto OnErrorExit;
 
-    AfbVcbDataT *vcbdata= calloc(1, sizeof(AfbVcbDataT));
-    vcbdata->magic= (void*)AfbAddVerbs;
+    GlueHandleT *handle = calloc(1, sizeof(GlueHandleT));
+    handle->magic = GLUE_EVT_MAGIC;
+    handle->event.apiv4= apiv4;
 
     PyObject *configP = PyTuple_GetItem(argsP,1);
     if (!PyDict_Check(configP)) goto OnErrorExit;
     Py_IncRef(configP);
 
     errorMsg= "config={'uid':'xxx','pattern':'yyy','callback':'zzz'}";
-    PyObject *slotP= PyDict_GetItemString(configP, "uid");
-    if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
-    const char*uid= PyUnicode_AsUTF8(slotP);
+    PyObject *uidP= PyDict_GetItemString(configP, "uid");
+    if (!uidP || !PyUnicode_Check(uidP)) goto OnErrorExit;
+    handle->event.async.uid= PyUnicode_AsUTF8(uidP);
 
-    slotP= PyDict_GetItemString(configP, "pattern");
-    if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
-    const char *pattern= PyUnicode_AsUTF8(slotP);
+    PyObject *patternP= PyDict_GetItemString(configP, "pattern");
+    if (!patternP || !PyUnicode_Check(patternP)) goto OnErrorExit;
+    handle->event.pattern= strdup(PyUnicode_AsUTF8(patternP));
 
-    PyObject *callbackP= PyDict_GetItemString(configP, "callback");
-    if (!slotP || !PyCallable_Check(callbackP)) goto OnErrorExit;
-    Py_IncRef(callbackP);
-    vcbdata->callback= (void*) callbackP;
+    handle->event.async.callbackP= PyDict_GetItemString(configP, "callback");
+    if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP)) goto OnErrorExit;
+    Py_IncRef(handle->event.async.callbackP);
 
-    PyObject *userdataP = PyTuple_GetItem(argsP,2);
-    if (userdataP) Py_IncRef(userdataP);
-    vcbdata->userdata = (void*)userdataP;
+    handle->event.async.userdataP = PyTuple_GetItem(argsP,2);
+    if (handle->event.async.userdataP) Py_IncRef(handle->event.async.userdataP);
 
-    errorMsg= AfbAddOneEvent (apiv4, uid, pattern, GlueEvtHandlerCb, vcbdata);
+    errorMsg= AfbAddOneEvent(apiv4, strdup(handle->event.async.uid), handle->event.pattern, GlueEventCb, handle);
     if (errorMsg) goto OnErrorExit;
 
-    GlueHandleT *handle= calloc (1, sizeof(GlueHandleT));
-    handle->magic= GLUE_EVT_MAGIC;
-    handle->evt.apiv4= apiv4;
-    handle->evt.name = pattern;
-    handle->evt.configP= configP;
-    Py_IncRef(configP);
-
     // return api glue
-    PyObject *capcule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeHandleCb);
+    PyObject *capcule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeCapculeCb);
+    Py_DecRef(uidP);
+    Py_DecRef(patternP);
+
     return capcule;
 
 OnErrorExit:
@@ -821,8 +797,8 @@ OnErrorExit:
 
 static PyObject* GlueEvtDelete(PyObject *self, PyObject *argsP)
 {
-    void *context;
     const char *errorMsg = "syntax: evtdelete(handle)";
+    void *userdata;
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_ONE_ARG) goto OnErrorExit;
 
@@ -833,11 +809,11 @@ static PyObject* GlueEvtDelete(PyObject *self, PyObject *argsP)
     afb_api_t apiv4= GlueGetApi(glue);
     if (!apiv4) goto OnErrorExit;
 
-    errorMsg= AfbDelOneEvent (apiv4, glue->evt.name, &context);
+    errorMsg= AfbDelOneEvent (apiv4, glue->event.pattern, &userdata);
     if (errorMsg) goto OnErrorExit;
-
-    Py_IncRef(glue->evt.configP);
-    free(glue);
+    GlueHandleT *handle= (GlueHandleT*)userdata;
+    assert (handle->magic == GLUE_EVT_MAGIC);
+    GlueFreeHandleCb(handle);
 
     Py_RETURN_NONE;
 
@@ -859,8 +835,8 @@ static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
     if (!PyDict_Check(handle->timer.configP)) goto OnErrorExit;
     Py_IncRef(handle->timer.configP);
 
-    handle->timer.userdataP =PyTuple_GetItem(argsP,2);
-    if (handle->timer.userdataP != Py_None) Py_IncRef(handle->timer.userdataP);
+    handle->timer.async.userdataP =PyTuple_GetItem(argsP,2);
+    if (handle->timer.async.userdataP != Py_None) Py_IncRef(handle->timer.async.userdataP);
 
     // retreive API from py handle
     handle->timer.apiv4= GlueGetApi(glue);
@@ -871,10 +847,10 @@ static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
     errorMsg= "timerconfig= {'uid':'xxx', 'callback': MyCallback, 'period': timer(ms), 'count': 0-xx}";
     slotP= PyDict_GetItemString(handle->timer.configP, "uid");
     if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
-    handle->timer.uid= PyUnicode_AsUTF8(slotP);
+    handle->timer.async.uid= PyUnicode_AsUTF8(slotP);
 
-    handle->timer.callbackP= PyDict_GetItemString(handle->timer.configP, "callback");
-    if (!handle->timer.callbackP || !PyCallable_Check(handle->timer.callbackP)) goto OnErrorExit;
+    handle->timer.async.callbackP= PyDict_GetItemString(handle->timer.configP, "callback");
+    if (!handle->timer.async.callbackP || !PyCallable_Check(handle->timer.async.callbackP)) goto OnErrorExit;
 
     slotP= PyDict_GetItemString(handle->timer.configP, "period");
     if (!slotP || !PyLong_Check(slotP)) goto OnErrorExit;
@@ -900,56 +876,6 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject* GlueJobstart(PyObject *self, PyObject *argsP)
-{
-    GlueHandleT *lock=NULL;
-    int err;
-
-    long count = PyTuple_GET_SIZE(argsP);
-    const char *errorMsg = "jobstart(handle, timeout, callback, [context])";
-    if (count < GLUE_THREE_ARG) goto OnErrorExit;
-
-    GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue) goto OnErrorExit;
-
-    long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,1));
-    if (timeout < 0) goto OnErrorExit;
-
-    PyObject *callbackP= PyTuple_GetItem(argsP,2);
-    if (!PyCallable_Check(callbackP)) goto OnErrorExit;
-    Py_IncRef(callbackP);
-
-    PyObject *userdataP= PyTuple_GetItem(argsP,3);
-    if (userdataP != Py_None) Py_IncRef(userdataP);
-
-    lock= calloc (1, sizeof(GlueHandleT));
-    lock->magic= GLUE_LOCK_MAGIC;
-    lock->lock.apiv4= GlueGetApi(glue);
-    lock->lock.callbackP= callbackP;
-    lock->lock.userdataP= userdataP;
-
-    err= afb_sched_enter(NULL, (int)timeout, GlueJobStartCb, lock);
-    if (err < 0)  lock->lock.status= err;
-
-    // free lock handle
-    Py_DecRef(lock->lock.callbackP);
-    if (lock->lock.userdataP) Py_DecRef(lock->lock.userdataP);
-    long status= lock->lock.status;
-    free (lock);
-
-    return PyLong_FromLong(status);
-
-OnErrorExit:
-    GLUE_DBG_ERROR(afbMain, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    if (lock) {
-        Py_DecRef(lock->lock.callbackP);
-        if (lock->lock.userdataP) Py_DecRef(lock->lock.userdataP);
-        free (lock);
-    }
-    return PyLong_FromLong(-1);
-}
-
 static PyObject* GlueJobcancel(PyObject *self, PyObject *argsP)
 {
     long count = PyTuple_GET_SIZE(argsP);
@@ -969,59 +895,122 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject* GlueJobpost(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
 {
-    GlueHandleCbT *glue=calloc (1, sizeof(GlueHandleCbT));
-    glue->magic = GLUE_SCHED_MAGIC;
+    const char *errorMsg = "jobpost(handle, callback, timeout, [userdata])";
+    GlueCallHandleT *handle=NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
-    const char *errorMsg = "syntax: jobpost(glue, timeout, callback [,userdata])";
-    if (count != GLUE_FOUR_ARG) goto OnErrorExit;
+    if (count < GLUE_THREE_ARG) goto OnErrorExit;
 
-    glue->handle= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue->handle) goto OnErrorExit;
+    GlueHandleT *glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
+    if (!glue) goto OnErrorExit;
 
-    long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,1));
-    if (timeout <= 0) goto OnErrorExit;
+    // prepare handle for callback
+    handle=calloc (1, sizeof(GlueCallHandleT));
+    handle->magic= GLUE_POST_MAGIC;
+    handle->glue=glue;
 
-    glue->callbackP= PyTuple_GetItem(argsP,2);
-    if (!PyCallable_Check(glue->callbackP)) {
+    handle->async.callbackP= PyTuple_GetItem(argsP,1);
+    if (!PyCallable_Check(handle->async.callbackP)) {
         errorMsg="syntax: callback should be a valid callable function";
         goto OnErrorExit;
     }
-    Py_IncRef(glue->callbackP);
+    Py_IncRef(handle->async.callbackP);
+    PyObject *uidP= PyDict_GetItemString(handle->async.callbackP, "__name__");
+    if (uidP) handle->async.uid= strdup(PyUnicode_AsUTF8(uidP));
+    Py_DecRef(uidP);
 
-    glue->userdataP =PyTuple_GetItem(argsP,3);
-    if (glue->userdataP != Py_None) Py_IncRef(glue->userdataP);
+    long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,2));
+    if (timeout <= 0) goto OnErrorExit;
+
+    handle->async.userdataP =PyTuple_GetItem(argsP,3);
+    if (handle->async.userdataP != Py_None) Py_IncRef(handle->async.userdataP);
 
     // ms delay for OnTimerCB (timeout is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
-    int jobid= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,GlueSchedTimeoutCb, glue, Afb_Sched_Mode_Start);
-	if (jobid <= 0) goto OnErrorExit;
+    int jobid= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,GlueJobPostCb, handle, Afb_Sched_Mode_Start);
+    if (jobid <= 0) goto OnErrorExit;
 
+    Py_DecRef(handle->async.callbackP);
+    if (handle->async.userdataP) Py_DecRef(handle->async.userdataP);
+    free (handle);
     return PyLong_FromLong(jobid);
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    if (handle) {
+        Py_DecRef(handle->async.callbackP);
+        if (handle->async.userdataP) Py_DecRef(handle->async.userdataP);
+        free (handle);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* GlueJobstart(PyObject *self, PyObject *argsP)
+{
+    const char *errorMsg = "jobstart(handle, callback, timeout, [userdata])";
+    GlueHandleT *handle=NULL;
+
+    long count = PyTuple_GET_SIZE(argsP);
+    if (count < GLUE_THREE_ARG) goto OnErrorExit;
+
+    GlueHandleT *glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
+    if (!glue) goto OnErrorExit;
+
+    // prepare handle for callback
+    handle=calloc (1, sizeof(GlueHandleT));
+    handle->magic= GLUE_JOB_MAGIC;
+    handle->job.apiv4= GlueGetApi(glue);
+
+    handle->job.async.callbackP= PyTuple_GetItem(argsP,1);
+    if (!PyCallable_Check(handle->job.async.callbackP)) {
+        errorMsg="syntax: callback should be a valid callable function";
+        goto OnErrorExit;
+    }
+    Py_IncRef(handle->job.async.callbackP);
+    PyObject *uidP= PyDict_GetItemString(handle->job.async.callbackP, "__name__");
+    if (uidP) handle->job.async.uid= strdup(PyUnicode_AsUTF8(uidP));
+    Py_DecRef(uidP);
+
+    long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,2));
+    if (timeout <= 0) goto OnErrorExit;
+
+    handle->job.async.userdataP =PyTuple_GetItem(argsP,3);
+    if (handle->job.async.userdataP != Py_None) Py_IncRef(handle->job.async.userdataP);
+
+    int err= afb_sched_enter(NULL, (int)timeout, GlueJobStartCb, handle);
+    if (err < 0) {
+        errorMsg= "afb_sched_enter (timeout?)";
+        goto OnErrorExit;
+    }
+
+    // save status before releasing handle
+    long status= handle->job.status;
+
+    // free job handle and return status
+    GlueFreeHandleCb(handle);
+    return PyLong_FromLong(status);
+
+OnErrorExit:
+    GLUE_DBG_ERROR(afbMain, errorMsg);
+    PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    if (handle)GlueFreeHandleCb(handle);
     Py_RETURN_NONE;
 }
 
 static PyObject* GlueJobKill(PyObject *self, PyObject *argsP)
 {
     int err;
-    const char *errorMsg = "syntax: jobkill(handle, lock, status)";
+    const char *errorMsg = "syntax: jobkill(job, status)";
     long count = PyTuple_GET_SIZE(argsP);
-    if (count !=  GLUE_THREE_ARG) goto OnErrorExit;
+    if (count !=  GLUE_TWO_ARG) goto OnErrorExit;
 
-    GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue) goto OnErrorExit;
+    GlueHandleT *glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
+    if (!glue || glue->magic != GLUE_JOB_MAGIC) goto OnErrorExit;
+    glue->job.status= PyLong_AsLong(PyTuple_GetItem(argsP,1));
 
-    GlueHandleT *lock= PyCapsule_GetPointer(PyTuple_GetItem(argsP,1), GLUE_AFB_UID);
-    if (!lock || lock->magic != GLUE_LOCK_MAGIC) goto OnErrorExit;
-
-    lock->lock.status= PyLong_AsLong(PyTuple_GetItem(argsP,2));
-
-    err= afb_sched_leave(lock->lock.afb);
+    err= afb_sched_leave(glue->job.afb);
     if (err) {
         errorMsg= "afb_sched_leave (invalid lock)";
         goto OnErrorExit;
@@ -1128,7 +1117,7 @@ static PyMethodDef MethodsDef[] = {
     {"setloa"        , GlueSetLoa           , METH_VARARGS, "Set LOA (LevelOfAssurance)"},
     {"jobstart"      , GlueJobstart         , METH_VARARGS, "Register a mainloop waiting lock"},
     {"jobkill"       , GlueJobKill          , METH_VARARGS, "Unlock jobstart"},
-    {"jobpost"       , GlueJobpost          , METH_VARARGS, "Post a job after timeout(ms)"},
+    {"jobpost"       , GlueJobPost          , METH_VARARGS, "Post a job after timeout(ms)"},
     {"jobcancel"     , GlueJobcancel        , METH_VARARGS, "Cancel a jobpost timer"},
     {"clientinfo"    , GlueClientInfo       , METH_VARARGS, "Return seesion info about client"},
     {"exit"          , GlueExit             , METH_VARARGS, "Exit binder with status"},
@@ -1146,7 +1135,7 @@ static PyModuleDef ModuleDef = {
 
 // Init redpak native module
 PyObject* PyInit__afbpyglue(void) {
-    int status=0; 
+    int status=0;
     fprintf (stderr, "I'm in python\n");
     PyObject *module = PyModule_Create(&ModuleDef);
 

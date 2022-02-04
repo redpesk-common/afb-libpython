@@ -35,6 +35,7 @@
 #include "py-afb.h"
 #include "py-utils.h"
 
+#include <semaphore.h>
 
 static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
 static pthread_key_t dataKey;
@@ -94,11 +95,11 @@ afb_api_t GlueGetApi(GlueHandleT*glue) {
         case GLUE_BINDER_MAGIC:
             afbApi= AfbBinderGetApi(glue->binder.afb);
             break;
-        case GLUE_LOCK_MAGIC:
-            afbApi= glue->lock.apiv4;
+        case GLUE_JOB_MAGIC:
+            afbApi= glue->job.apiv4;
             break;
         case GLUE_EVT_MAGIC:
-            afbApi= glue->evt.apiv4;
+            afbApi= glue->event.apiv4;
             break;
         case GLUE_TIMER_MAGIC:
             afbApi= glue->timer.apiv4;
@@ -196,7 +197,7 @@ void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, con
     {
     case GLUE_API_MAGIC:
     case GLUE_EVT_MAGIC:
-    case GLUE_LOCK_MAGIC:
+    case GLUE_JOB_MAGIC:
         afb_api_vverbose(GlueGetApi(handle), level, file, line, func, fmt, args);
         break;
 
@@ -311,7 +312,6 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
     } else {
         GlueVerbose(handle, level, filename, linenum, funcname, format);
     }
-    PyErr_Clear();
     return;
 
 OnErrorExit:
@@ -401,9 +401,14 @@ json_object *pyObjToJson(PyObject* objP)
 
     // python function is not json compatible, also we keep it an object userdata context
     else if (PyCallable_Check(objP)) {
-            valueJ = json_object_new_string("pyCB");
+            const char *funcname;
+            PyObject *funcnameP= PyDict_GetItemString(objP, "__name__");
+            if (funcnameP) funcname= strdup(PyUnicode_AsUTF8(funcnameP));
+            else funcname="PyCb";
+            valueJ = json_object_new_string(funcname);
             json_object_set_userdata(valueJ, objP, PyFreeJsonCtx);
             Py_IncRef(objP);
+            if (funcnameP) Py_DecRef(funcnameP);
     }
     else {
         ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));

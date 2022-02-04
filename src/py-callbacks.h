@@ -35,25 +35,19 @@
 #include <glue-afb.h>
 #include <glue-utils.h>
 
-
-typedef struct {
-    GlueHandleT  *glue;
-    PyObject *callbackP;
-    PyObject *userdataP;
-} PyAsyncCtxT;
-
-void GlueEvtHandlerCb(void *userdata, const char *event_name,	unsigned nparams, afb_data_x4_t const params[],	afb_api_t api);
+void GlueEventCb(void *userdata, const char *event_name,	unsigned nparams, afb_data_x4_t const params[],	afb_api_t api);
+void GlueApiEventCb(void *userdata, const char *event_name,	unsigned nparams, afb_data_x4_t const params[],	afb_api_t api);
 void GlueApiSubcallCb(void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_api_t api);
 void GlueRqtSubcallCb(void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_req_t req);
 
 void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]);
-void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]);
+void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]);
 int  GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *userdata);
 int  GlueStartupCb(void *config, void *userdata);
 void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]);
 void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount);
-void GlueTimerClear(GlueHandleT *glue);
 
-void GlueSchedTimeoutCb (int signum, void *userdata);
+void GlueJobPostCb (int signum, void *userdata);
 void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock);
-void GlueFreeHandleCb(PyObject *capculeP);
+void GlueFreeCapculeCb(PyObject *capculeP);
+void GlueFreeHandleCb( GlueHandleT *handle);

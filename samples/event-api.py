@@ -28,15 +28,15 @@ from afbpyglue import libafb
 # static variables
 count=0
 tic=0
-event=None
+evtid=None
 
 # timer handle callback
-def timerCB (timer, evt, count):
+def timerCB (timer, count, userdata):
     global tic
     tic += 1
-    libafb.notice (evt, "timer':%s' event:%s' count=%d,", libafb.config(timer, 'uid'), libafb.config(evt, 'uid'), tic)
-    libafb.evtpush(evt, {'tic':tic})
-    #return -1 # should exit timer 
+    libafb.notice (timer, "timer':%s' tic=%d, userdata=%s", libafb.config(timer, 'uid'), tic, userdata)
+    libafb.evtpush(evtid, {'tic':tic})
+    #return -1 # should exit timer
 
  # ping/pong event func
 def pingCB(rqt, *args):
@@ -47,18 +47,18 @@ def pingCB(rqt, *args):
 
 def subscribeCB(rqt, *args):
     libafb.notice  (rqt, "subscribing api event")
-    libafb.evtsubscribe (rqt, event)
+    libafb.evtsubscribe (rqt, evtid)
     return 0 # implicit respond
 
 def unsubscribeCB(rqt, *args):
     libafb.notice  (rqt, "subscribing api event")
-    libafb.evtunsubscribe (rqt, event)
+    libafb.evtunsubscribe (rqt, evtid)
     return 0 # implicit respond
 
 
 # When Api ready (state==init) start event & timer
 def apiControlCb(api, state):
-    global event
+    global evtid
 
     apiname= libafb.config(api, "api")
     #WARNING: from Python 3.10 use switch-case as elseif replacement
@@ -69,11 +69,11 @@ def apiControlCb(api, state):
         tictime= libafb.config(api,'tictime')*1000 # move from second to ms
         libafb.notice(api, "api=[%s] start event tictime=%dms", apiname, tictime)
 
-        event= libafb.evtnew (api,{'uid':'py-event', 'info':'py testing event sample'})
-        if (event is None):
+        evtid= libafb.evtnew (api,'py-event')
+        if (evtid is None):
             raise Exception ('fail to create event')
 
-        timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, event)
+        timer= libafb.timernew (api, {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}, ["my_user-data"])
         if (timer is None):
             raise Exception ('fail to create timer')
 

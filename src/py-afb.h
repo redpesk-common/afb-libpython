@@ -21,25 +21,30 @@
  * $RP_END_LICENSE$
  */
 #pragma once
+#include <semaphore.h>
 
 #include <libafb/sys/verbose.h>
-
 #include "glue-afb.h"
 #include <json-c/json.h>
 
 #define GLUE_AFB_UID "#afb#"
 #define SUBCALL_MAX_RPLY 8
 
+typedef struct {
+    char *uid;
+    PyObject *callbackP;
+    PyObject *userdataP;
+} GlueAsyncCtxT;
 
 struct PyBinderHandleS {
     AfbBinderHandleT *afb;
+    //sem_t sem;
     PyObject *configP;
     PyThreadState *pyState;
 };
 
-struct PyjobstartS {
-    PyObject *callbackP;
-    PyObject *userdataP;
+struct PyJobHandleS {
+    GlueAsyncCtxT async;
     struct afb_sched_lock *afb;
     afb_api_t  apiv4;
     long status;
@@ -53,59 +58,50 @@ struct PyApiHandleS {
 
 struct PyRqtHandleS {
     struct PyApiHandleS *api;
-    PyThreadState *pyState;
     int replied;
     afb_req_t afb;
 };
 
-struct PyTimerHandleS {
-    const char *uid;
-    afb_timer_t afb;
-    afb_api_t  apiv4;
-    PyObject *callbackP;
-    PyObject *configP;
-    PyObject *userdataP;
-    int usage;
-};
-
-struct PyEvtHandleS {
-    //const char *uid;
-    const char *name;
+struct PyEventHandleS {
     afb_event_t afb;
-    PyObject *configP;
     afb_api_t apiv4;
-    int count;
+    char *pattern;
+    PyObject *configP;
+    GlueAsyncCtxT async;
 };
 
-struct PyHandlerHandleS {
-    const char *uid;
-    PyObject *callbackP;
-    PyObject *configP;
-    PyObject *userdataP;
+struct PyTimerHandleS {
+    afb_timer_t afb;
     afb_api_t apiv4;
-    int count;
+    PyObject *configP;
+    GlueAsyncCtxT async;
+};
+
+struct PyPostHandleS {
+    afb_api_t apiv4;
+    PyObject *configP;
+    GlueAsyncCtxT async;
 };
 
 typedef struct {
     GlueHandleMagicsE magic;
-    //PyThreadState *pyState;
-    //PyGILState_STATE glState;
+    int usage;
     union {
         struct PyBinderHandleS binder;
-        struct PyEvtHandleS evt;
         struct PyApiHandleS api;
         struct PyRqtHandleS rqt;
         struct PyTimerHandleS timer;
-        struct PyjobstartS lock;
-        struct PyHandlerHandleS handler;
+        struct PyEventHandleS event;
+        struct PyPostHandleS post;
+        struct PyJobHandleS job;
     };
 } GlueHandleT;
 
-typedef struct {
-    int magic;
-    GlueHandleT *handle;
-    PyObject *callbackP;
-    PyObject *userdataP;
-} GlueHandleCbT;
+typedef struct  {
+    GlueHandleMagicsE magic;
+    GlueHandleT *glue;
+    GlueAsyncCtxT async;
+} GlueCallHandleT;
+
 
 extern GlueHandleT *afbMain;

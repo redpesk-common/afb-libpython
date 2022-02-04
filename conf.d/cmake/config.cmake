@@ -96,7 +96,7 @@ add_definitions(-DCONTROL_CONFIG_PATH="${CONTROL_CONFIG_PATH}")
 set(C_COMPILE_OPTIONS "-Wall" "-Wextra" "-Wconversion"  "-Wno-missing-field-initializers" "-Wno-unused-parameter" "-Wno-sign-compare" "-Wno-sign-conversion" "-Wno-uninitialized" "-Werror=implicit-function-declaration" "-ffunction-sections" "-fdata-sections" "-fPIC" CACHE STRING "Compilation flags")
 #set(CXX_COMPILE_OPTIONS "" CACHE STRING "Compilation flags for C++ language.")
 #set(PROFILING_COMPILE_OPTIONS "-g" "-O0" "-pg" "-Wp,-U_FORTIFY_SOURCE" CACHE STRING "Compilation flags for PROFILING build type.")
-#set(DEBUG_COMPILE_OPTIONS "-g" "-ggdb" "-Wp,-U_FORTIFY_SOURCE" CACHE STRING "Compilation flags for DEBUG build type.")
+#set(DEBUG_COMPILE_OPTIONS "-g" "-Wp,-U_FORTIFY_SOURCE" CACHE STRING "Compilation flags for DEBUG build type.")
 #set(CCOV_COMPILE_OPTIONS "-g" "-O2" "--coverage" CACHE STRING "Compilation flags for CCOV build type.")
 #set(RELEASE_COMPILE_OPTIONS "-g" "-O2" CACHE STRING "Compilation flags for RELEASE build type.")
 

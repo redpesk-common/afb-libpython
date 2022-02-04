@@ -37,174 +37,52 @@
 #include "py-utils.h"
 #include "py-callbacks.h"
 
-void GlueEvtHandlerCb (void *userdata, const char *evtName, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
-    const char *errorMsg = NULL;
-    int err;
-    afb_data_t argsD[nparams];
-    json_object *argsJ[nparams];
-
-    GlueHandleT *glue= (GlueHandleT*) afb_api_get_userdata(api);
-    assert (glue);
-
-    // on first call we compile configJ to boost following py api/verb calls
-    AfbVcbDataT *vcbData= userdata;
-    if (vcbData->magic != (void*)AfbAddVerbs) {
-        errorMsg = "(hoops) event invalid vcbData handle";
-        goto OnErrorExit;
-    }
-
-    // on first call we need to retreive original callback object from configJ
-    if (!vcbData->callback)
-    {
-        json_object *callbackJ=json_object_object_get(vcbData->configJ, "callback");
-        if (!callbackJ) {
-            errorMsg = "(hoops) event no callback defined";
-            goto OnErrorExit;
-        }
-
-        // extract Python callable from callbackJ
-        vcbData->callback = json_object_get_userdata (callbackJ);
-        if (!vcbData->callback || !PyCallable_Check((PyObject*)vcbData->callback)) {
-            errorMsg = "(hoops) event has no callable function";
-            goto OnErrorExit;
-        }
-    }
-
-    // prepare calling argument list
-    PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(nparams+GLUE_THREE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
-    PyTuple_SetItem (argsP, 1, PyUnicode_FromString(evtName));
-    if (vcbData->userdata) {
-        Py_IncRef((PyObject*)vcbData->userdata);
-        PyTuple_SetItem (argsP, 2, (PyObject*)vcbData->userdata);
-    } else {
-        PyTuple_SetItem (argsP, 2, Py_None);
-    }
-
-    // retreive event data and convert them to json
-    for (int idx = 0; idx < nparams; idx++)
-    {
-        err = afb_data_convert(params[idx], &afb_type_predefined_json_c, &argsD[idx]);
-        if (err)
-        {
-            errorMsg = "fail converting input params to json";
-            goto OnErrorExit;
-        }
-        argsJ[idx]  = afb_data_ro_pointer(argsD[idx]);
-        PyTuple_SetItem(argsP, idx+GLUE_THREE_ARG, jsonToPyObj(argsJ[idx]));
-    }
-
-    // call python event handler code
-    PyObject *resultP= PyObject_Call ((PyObject*)vcbData->callback, argsP, NULL);
-    if (!resultP) {
-        errorMsg="Event handler callback fail";
-        goto OnErrorExit;
-    }
-
-    // free json_object
-    for (int idx=0; idx < nparams; idx++) {
-        afb_data_unref(argsD[idx]);
-        json_object_put(argsJ[idx]);
-    }
-    return;
-
-OnErrorExit:
-    GLUE_DBG_ERROR(glue, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    return;
-}
-
-void GlueFreeHandleCb(PyObject *capculeP) {
-   GlueHandleT *handle=   PyCapsule_GetPointer(capculeP, GLUE_AFB_UID);
-   if (!handle) goto OnErrorExit;
+void GlueFreeHandleCb(GlueHandleT *handle) {
+    if (!handle) goto OnErrorExit;
+    handle->usage--;
 
     switch (handle->magic) {
         case GLUE_EVT_MAGIC:
-            if ( handle->evt.configP) Py_DecRef( handle->evt.configP);
+            if (handle->usage < 0) {
+                free (handle->event.pattern);
+                Py_DecRef(handle->event.configP);
+                if ( handle->event.configP) Py_DecRef(handle->event.configP);
+            }
             break;
         case GLUE_API_MAGIC:
             break;
-        case GLUE_LOCK_MAGIC:
-            if (handle->lock.userdataP) Py_DecRef(handle->lock.userdataP);
-            if (handle->lock.callbackP) Py_DecRef(handle->lock.callbackP);
+        case GLUE_JOB_MAGIC:
+            if (handle->usage < 0) {
+                Py_DecRef(handle->job.async.callbackP);
+                if (handle->job.async.userdataP) Py_DecRef(handle->job.async.userdataP);
+                free (handle->job.async.uid);
+            }
+            break;
+        case GLUE_TIMER_MAGIC:
+            afb_timer_unref (handle->timer.afb);
+            if (handle->usage < 0) {
+                Py_DecRef(handle->timer.async.callbackP);
+                if (handle->timer.async.userdataP)Py_DecRef(handle->timer.async.userdataP);
+            }
+            break;
         default:
             goto OnErrorExit;
-
     }
-    free (handle);
+    if (handle->usage < 0) free (handle);
+    return;
 
 OnErrorExit:
     ERROR ("try to release a non glue handle");
 }
 
-void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
-
-    const char *errorMsg = NULL;
-    GlueHandleT *ctx= (GlueHandleT*)userdata;
-    assert (ctx && ctx->magic == GLUE_LOCK_MAGIC);
-    ctx->lock.afb= afbLock;
-
-    // create a fake API for waitCB
-    GlueHandleT *glue = calloc(1,sizeof(GlueHandleT));
-    glue->magic= GLUE_API_MAGIC;
-    glue->api.afb=ctx->lock.apiv4;
-
-    // prepare calling argument list
-    PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(GLUE_THREE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeHandleCb));
-    PyTuple_SetItem (argsP, 1, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
-    PyTuple_SetItem (argsP, 2, ctx->lock.userdataP);
-
-    PyObject *resultP= PyObject_Call (ctx->lock.callbackP, argsP, NULL);
-    if (!resultP) {
-        errorMsg="async callback fail";
-        goto OnErrorExit;
-    }
-    return;
-
-OnErrorExit:
-    GLUE_DBG_ERROR(ctx, errorMsg);
+void GlueFreeCapculeCb(PyObject *capculeP) {
+   GlueHandleT *handle= PyCapsule_GetPointer(capculeP, GLUE_AFB_UID);
+   GlueFreeHandleCb (handle);
 }
 
-void GlueSchedTimeoutCb (int signum, void *userdata) {
-    const char *errorMsg = NULL;
-    GlueHandleCbT *ctx= (GlueHandleCbT*)userdata;
-    assert (ctx && ctx->magic == GLUE_SCHED_MAGIC);
-    PyThreadState_Swap(GetPrivateData());
-
-    // timer not cancel
-    if (signum != SIGABRT) {
-        // prepare calling argument list
-        PyThreadState_Swap(GetPrivateData());
-        PyObject *argsP= PyTuple_New(GLUE_TWO_ARG);
-        PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->handle, GLUE_AFB_UID, NULL));
-        PyTuple_SetItem (argsP, 1, ctx->userdataP);
-
-        PyObject *resultP= PyObject_Call (ctx->callbackP, argsP, NULL);
-        if (!resultP) {
-            errorMsg="async callback fail";
-            goto OnErrorExit;
-        }
-    }
-    Py_DECREF (ctx->callbackP);
-    if (ctx->userdataP) Py_DECREF (ctx->userdataP);
-    free (ctx);
-    return;
-
-OnErrorExit:
-    GLUE_DBG_ERROR(ctx->handle, errorMsg);
-    Py_DECREF (ctx->callbackP);
-    if (ctx->userdataP) Py_DECREF (ctx->userdataP);
-    free (ctx);
-}
-
-void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
+void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
     const char *errorMsg = NULL;
     int err;
-    afb_data_t argsD[nparams];
-    json_object *argsJ[nparams];
 
     // new afb request
     GlueHandleT *glue= PyRqtNew(afbRqt);
@@ -241,14 +119,17 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
     // retreive input arguments and convert them to json
     for (int idx = 0; idx < nparams; idx++)
     {
-        err = afb_data_convert(params[idx], &afb_type_predefined_json_c, &argsD[idx]);
+        afb_data_t argD;
+        json_object *argJ;
+        err = afb_data_convert(params[idx], &afb_type_predefined_json_c, &argD);
         if (err)
         {
             errorMsg = "fail converting input params to json";
             goto OnErrorExit;
         }
-        argsJ[idx]  = afb_data_ro_pointer(argsD[idx]);
-        PyTuple_SetItem(argsP, idx+1, jsonToPyObj(argsJ[idx]));
+        argJ  = afb_data_ro_pointer(argD);
+        PyTuple_SetItem(argsP, idx+1, jsonToPyObj(argJ));
+        afb_data_unref(argD);
     }
 
     PyObject *resultP= PyObject_Call ((PyObject*)vcbData->callback, argsP, NULL);
@@ -287,10 +168,7 @@ void GlueVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]) {
             status= PyLong_AsLong(resultP);
             GlueAfbReply(glue, status, 0, NULL);
         }
-        for (int idx=0; idx <nparams; idx++) {
-            //json_object_put(argsJ[idx]); ?? TBD Jose
-            afb_data_unref(argsD[idx]);
-        }
+        //for (int idx=0; idx <nparams; idx++) afb_data_unref(argsD[idx]);
         Py_DECREF (resultP);
     }
 
@@ -442,10 +320,8 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
     return;
 }
 
-
-static void GluePcallFunc (void *userdata, int status, unsigned nreplies, afb_data_t const replies[]) {
-    PyAsyncCtxT *ctx= (PyAsyncCtxT*) userdata;
-    const char *errorMsg = NULL;
+static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *label, int status, unsigned nreplies, afb_data_t const replies[]) {
+    const char *errorMsg = "internal-error";
 
     // subcall was refused
     if (AFB_IS_BINDER_ERRNO(status)) {
@@ -454,95 +330,126 @@ static void GluePcallFunc (void *userdata, int status, unsigned nreplies, afb_da
     }
 
     // prepare calling argument list
+    glue->usage++;
     PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nreplies+GLUE_THREE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx->glue, GLUE_AFB_UID, NULL));
-    PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
-    PyTuple_SetItem (argsP, 2, ctx->userdataP);
+    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
+    if (label) PyTuple_SetItem (argsP, 1, PyUnicode_FromString(label));
+    else PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
 
+    // add userdata if any (Fulup Py_IncRef needed ???)
+    if (!async->userdataP) PyTuple_SetItem (argsP, 2, Py_None);
+    else {
+        PyTuple_SetItem (argsP, 2, async->userdataP);
+        Py_IncRef(async->userdataP);
+    }
+
+    // push event data if any
     errorMsg= PyPushAfbReply (argsP, 3, nreplies, replies);
     if (errorMsg) goto OnErrorExit;
 
-    PyObject *resultP= PyObject_Call (ctx->callbackP, argsP, NULL);
+    PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
     if (!resultP) {
-        errorMsg="async callback fail";
+        errorMsg="function-fail";
         goto OnErrorExit;
     }
-
-    // free afb request and glue
-    if (ctx->userdataP != Py_None) Py_DECREF(ctx->userdataP);
-    Py_DECREF(ctx->callbackP);
-    Py_DECREF(argsP);
-    free (ctx);
     return;
 
 OnErrorExit: {
-    afb_data_t reply;
+    const char*uid= async->uid;
     json_object *errorJ = PyJsonDbg(errorMsg);
-    GLUE_AFB_WARNING(ctx->glue, "python=%s", json_object_get_string(errorJ));
-    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
-    GlueAfbReply(ctx->glue, -1, 1, &reply);
-    free (ctx);
+    if (glue->magic != GLUE_RQT_MAGIC)  GLUE_AFB_WARNING(glue, "uid=%s info=%s error=%s", uid, errorMsg,  json_object_get_string(errorJ));
+    else {
+        afb_data_t reply;
+        GLUE_AFB_WARNING(glue, "%s", json_object_get_string(errorJ));
+        afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
+        GlueAfbReply(glue, -1, 1, &reply);
     }
+  }
 }
 
-void GlueApiSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_api_t api) {
-    GluePcallFunc (userdata, status, nreplies, replies);
+void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
+
+    GlueHandleT *glue= (GlueHandleT*)userdata;
+    assert (glue->magic == GLUE_JOB_MAGIC);
+
+    glue->job.afb= afbLock;
+    GluePcallFunc (glue, &glue->job.async, NULL, signum, 0, NULL);
 }
 
-void GlueRqtSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_req_t req) {
-    GluePcallFunc (userdata, status, nreplies, replies);
-}
+// used when declaring event with the api
+void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
+    const char *errorMsg;
+    GlueHandleT *glue= (GlueHandleT*) afb_api_get_userdata(api);
+    assert (glue->magic == GLUE_API_MAGIC);
 
-void GlueTimerClear(GlueHandleT *glue) {
-
-    afb_timer_unref (glue->timer.afb);
-    Py_DecRef(glue->timer.configP);
-    glue->timer.usage--;
-
-    // free timer pyState and ctx
-    if (glue->timer.usage <= 0) {
-       glue->magic=0;
-       Py_DecRef(glue->timer.userdataP);
-       Py_DecRef(glue->timer.callbackP);
-       free(glue);
+    // on first call we compile configJ to boost following py api/verb calls
+    AfbVcbDataT *vcbData= userdata;
+    if (vcbData->magic != (void*)AfbAddVerbs) {
+        errorMsg = "(hoops) event invalid vcbData handle";
+        goto OnErrorExit;
     }
+
+    // on first call we need to retreive original callback object from configJ
+    if (!vcbData->callback)
+    {
+        json_object *callbackJ=json_object_object_get(vcbData->configJ, "callback");
+        if (!callbackJ) {
+            errorMsg = "(hoops) event no callback defined";
+            goto OnErrorExit;
+        }
+
+        // create an async structure to use gluePcallFunc and extract callbackR from json userdata
+        GlueAsyncCtxT *async= calloc (1, sizeof(GlueAsyncCtxT));
+        async->callbackP=  json_object_get_userdata (callbackJ);
+        if (!async->callbackP || !PyCallable_Check(async->callbackP)) {
+            errorMsg = "(hoops) event has no callable function";
+            goto OnErrorExit;
+        }
+        // extract Python callable from callbackJ
+        vcbData->callback = async;
+    }
+
+    //GluePcallFunc (glue, (GlueAsyncCtxT*)vcbData->callback, label, 0, nparams, params);
+    GluePcallFunc (glue, (GlueAsyncCtxT*)vcbData->callback, label, 0, 0, NULL);
+    return;
+OnErrorExit:
+    GLUE_DBG_ERROR(glue, errorMsg);
+}
+
+// user when declaring event with libafb.evthandler
+void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
+    GlueHandleT *glue= (GlueHandleT*) userdata;
+    assert (glue->magic == GLUE_EVT_MAGIC);
+    GluePcallFunc (glue, &glue->event.async, label, 0, nparams, params);
 }
 
 void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount) {
-    const char *errorMsg=NULL;
-    GlueHandleT *ctx= (GlueHandleT*)userdata;
-    assert (ctx && ctx->magic == GLUE_TIMER_MAGIC);
-    long status=0;
+   GlueHandleT *glue= (GlueHandleT*) userdata;
+   assert (glue->magic == GLUE_TIMER_MAGIC);
+   GluePcallFunc (glue, &glue->timer.async, NULL, decount, 0, NULL);
+}
 
-    PyThreadState_Swap(GetPrivateData());
-    PyObject *argsP= PyTuple_New(GLUE_THREE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(ctx, GLUE_AFB_UID, NULL));
-    PyTuple_SetItem (argsP, 1, ctx->timer.userdataP);
-    if (ctx->timer.userdataP) Py_IncRef(ctx->timer.userdataP);
-    PyTuple_SetItem (argsP, 2, PyLong_FromLong(decount));
+void GlueJobPostCb (int signum, void *userdata) {
+    GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
+    assert (handle->magic == GLUE_POST_MAGIC);
+    if (!signum) GluePcallFunc (handle->glue, &handle->async, NULL, signum, 0, NULL);
+    free (handle->async.uid);
+    free (handle);
+}
 
-    PyObject *resultP= PyObject_Call (ctx->timer.callbackP, argsP, NULL);
-    if (!resultP) {
-        errorMsg="timer callback fail";
-        goto OnErrorExit;
-    }
-    if (resultP != Py_None) {
-        if (!PyLong_Check(resultP)) {
-            errorMsg="TimerCB returned status should be integer";
-            goto OnErrorExit;
-        }
-        status= PyLong_AsLong(resultP);
-    }
+void GlueApiSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_api_t api) {
+    GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
+    assert (handle->magic == GLUE_CALL_MAGIC);
+    GluePcallFunc (handle->glue, &handle->async, NULL, status, nreplies, replies);
+    free (handle->async.uid);
+    free (handle);
+}
 
-    // check for last timer interation
-    if (decount == 1 || status != 0) goto OnUnrefExit;
-
-    return;
-
-OnErrorExit:
-    GLUE_DBG_ERROR(afbMain, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
-OnUnrefExit:
-    GlueTimerClear(ctx);
+void GlueRqtSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_req_t req) {
+    GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
+    assert (handle->magic == GLUE_CALL_MAGIC);
+    GluePcallFunc (handle->glue, &handle->async, NULL, status, nreplies, replies);
+    free (handle->async.uid);
+    free (handle);
 }

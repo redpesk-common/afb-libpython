@@ -39,15 +39,14 @@ def pingCB(rqt, *args):
     libafb.notice  (rqt, "From pingCB count=%d", count)
     return (0, {"pong":count}) # implicit response
 
-def helloEventCB (api, name, *data):
-    libafb.notice  (api, "helloEventCB name=%s received", name)
+def helloEventCB (evt, name, ctx, *data):
+    libafb.notice  (evt, "helloEventCB name=%s received", name)
 
-def otherEventCB (api, name, *data):
-    libafb.notice  (api, "otherEventCB name=%s data=%s", name, *data)
+def otherEventCB (evt, name, ctx, *data):
+    libafb.notice  (evt, "otherEventCB name=%s data=%s", name, *data)
 
-def asyncRespCB(rqt, status, ctx, *args):
-    global count
-    libafb.notice  (rqt, "asyncRespCB status=%d ctx:'%s', response:'%s'", status, ctx, args)
+def asyncRespCB(rqt, status, userdata, *args):
+    libafb.notice  (rqt, "asyncRespCB status=%d ctx:%s, response:%s", status, userdata, args)
     libafb.reply (rqt, status, 'async helloworld/testargs', args)
 
 def syncCB(rqt, *args):
@@ -60,7 +59,7 @@ def syncCB(rqt, *args):
         libafb.reply (rqt, response.status, 'async helloworld/testargs success')
 
 def asyncCB(rqt, *args):
-    userdata= "context-user-data"
+    userdata="my-user-data"
     libafb.notice  (rqt, "asyncCB calling helloworld/testargs *args=%s", args)
     libafb.callasync (rqt,"helloworld", "testargs", asyncRespCB, userdata, args[0])
     # response within 'asyncRespCB' callback

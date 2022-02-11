@@ -7,10 +7,10 @@ Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END
 object:
     test-api.py does not implement new api, but test existing APIs, it:
     - imports helloworld-event binding and api
-    - call helloworld-event/startTimer to activate binding timer (1 event per second)
-    - call helloworld-event/subscribe to subscribe to event
-    - lock loopstart with aSyncEvtCheck and register the eventHandler (EventReceiveCB) with loopstart lock
-    - finally (EventReceiveCB) count 5 events and release the loopstart lock received from aSyncEvtCheck
+    - call helloworld-event/startTimer to activate binding timer (1 evt per second)
+    - call helloworld-event/subscribe to subscribe to evt
+    - lock loopstart with aSyncEvtCheck and register the evtHandler (EvtReceiveCB) with loopstart lock
+    - finally (EvtReceiveCB) count 5 evts and release the loopstart lock received from aSyncEvtCheck
 
 usage
     - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/test-api.py
@@ -30,38 +30,34 @@ import sys
 evtCount=0
 evtfd=None
 
-def EventReceiveCB(evt, name, ctx, *data):
+def EvtReceiveCB(evt, name, ctx, *data):
     global evtCount
-    libafb.notice (evt,"event=%s data=%s count=%d", name, data, evtCount)
+    libafb.notice (evt,"evt=%s data=%s count=%d", name, data, evtCount)
     evtCount += 1
     if evtCount >= ctx['count']:
-        libafb.notice (evt, "*** EventReceiveCB releasing job ***")
+        libafb.notice (evt, "*** EvtReceiveCB releasing job ***")
         libafb.jobkill (ctx['job'], evtCount) # jobkill(job, status)
 
-def EventSubscribe(binder, userdata):
-    libafb.notice (binder, "helloworld-event", "startTimer")
+def EvtSubscribe(binder, userdata):
     response= libafb.callsync(binder, "helloworld-event", "subscribe")
-    if response.status != 0:
-        libafb.notice  (binder, "helloworld subscribe-event fail status=%d", response.status)
-    return status
+    return response.status
 
-def StartEventTimer(binder, userdata):
-    libafb.notice (binder, "helloworld-event/startTimer")
+def EvtUnsubscribe(binder, userdata):
+    response= libafb.callsync(binder, "helloworld-event", "unsubscribe")
+    return response.status
+
+def StartEvtTimer(binder, userdata):
     response= libafb.callsync(binder, "helloworld-event", "startTimer")
-    if response.status != 0:
-        libafb.notice  (binder, "helloworld event-timer fail status=%d", response.status)
-    return status
+    return response.status
 
-def EventWaitCount(job, signum, userdata):
+def EvtWaitCount(job, signum, userdata):
     global evtfd
-    libafb.notice (job, "jobstart timer-event handler register")
     ctx= {'job':job, 'count':userdata['count']}
-    userdata['evtfd']= libafb.evthandler(job, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, ctx)
+    userdata['evtfd']= libafb.evthandler(job, {'uid':'timer-evt', 'pattern':'helloworld-event/timerCount','callback':EvtReceiveCB}, ctx)
     return 0
 
-def EventGet5Test(binder, userdata):
-    libafb.notice (binder, "waiting (%d) for test to finish", userdata['timeout'])
-    status= libafb.jobstart(binder, EventWaitCount, userdata['timeout'], userdata)
+def EvtGet5Test(binder, userdata):
+    status= libafb.jobstart(binder, EvtWaitCount, userdata['timeout'], userdata)
     if status < 0:
         libafb.warning (binder, "timeout fused (should increase ?)")
         libafb.evtdelete(userdata['evtfd'])
@@ -79,11 +75,11 @@ def StartTest(binder, testcase):
         libafb.info (binder, "testing uid=%s info=%s" % (test['uid'], test['info']))
         status= test['callback'](binder, test['userdata'])
         if (status != test['expect']):
-            libafb.error ("test fail uid=%s status=%d info=%s", test['uid'], status, test['info'])
+            libafb.error (binder, "test fail uid=%s status=%d info=%s", test['uid'], status, test['info'])
             raise Exception(test.uid)
 
     libafb.notice (binder, "test done status=%d", status)
-    return(status) # negative status force loopstart exit
+    return(1) # 0 would keeps mainloop running
 
 # helloworld binding sample definition
 bindingOpts = {
@@ -107,11 +103,13 @@ binder= libafb.binder(binderOpts)
 hello = libafb.binding(bindingOpts)
 status= 0
 
+
 # minimalist test framework
 myTestCase = [
-    {'uid':'event-ticstart' ,'callback': StartEventTimer, 'userdata':None,'expect':0, 'info':'start helloworld binding timer'},
-    {'uid':'event-subscribe','callback': EventSubscribe , 'userdata':None,'expect':0, 'info':'subscribe to hellworld event'},
-    {'uid':'event-getcount' ,'callback': EventGet5Test  , 'userdata':{'timeout':10,'count':5}, 'expect': 5, 'info':'wait for 5 helloworld event'},
+    {'uid':'evt-ticstart'   ,'callback': StartEvtTimer , 'userdata':None,'expect':0, 'info':'start helloworld binding timer'},
+    {'uid':'evt-subscribe'  ,'callback': EvtSubscribe  , 'userdata':None,'expect':0, 'info':'subscribe to hellworld evt'},
+    {'uid':'evt-getcount'   ,'callback': EvtGet5Test   , 'userdata':{'timeout':10,'count':5}, 'expect': 5, 'info':'wait for 5 helloworld evt'},
+    {'uid':'evt-unsubscribe','callback': EvtUnsubscribe, 'userdata':None, 'expect': 0, 'info':'unsubscribe from evt'},
 ]
 
 # enter binder main loop and launch test callback
@@ -121,4 +119,5 @@ except Exception:
     libafb.error(binder, "loopstart raise an exception error=%s", sys.exc_info()[0])
 finally:
     libafb.notice(binder, "loopstart done status=%d", status)
+
 

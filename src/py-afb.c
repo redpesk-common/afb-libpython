@@ -237,7 +237,6 @@ static PyObject* GlueLoopStart(PyObject *self, PyObject *argsP)
     const char *errorMsg = "syntax: loopstart(binder,[callback],[userdta])";
     int status;
 
-
     long count = PyTuple_GET_SIZE(argsP);
     if (count <GLUE_ONE_ARG || count >GLUE_THREE_ARG) goto OnErrorExit;
 

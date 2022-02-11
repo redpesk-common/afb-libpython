@@ -256,8 +256,8 @@ OnErrorExit:
 int GlueStartupCb(void *config, void *userdata)
 {
     GlueAsyncCtxT *async= (GlueAsyncCtxT*) config;
-    GlueHandleT *ctx = (GlueHandleT *)userdata;
-    assert(ctx && ctx->magic == GLUE_BINDER_MAGIC);
+    GlueHandleT *glue = (GlueHandleT *)userdata;
+    assert(glue && GlueGetApi(glue));
     int status=0;
 
     if (async->callbackP)
@@ -266,10 +266,11 @@ int GlueStartupCb(void *config, void *userdata)
         PyThreadState_Swap(GetPrivateData());
         argsP= PyTuple_New(GLUE_TWO_ARG);
 
+        PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
+
         if (!async->userdataP) PyTuple_SetItem (argsP, 1, Py_None);
         else PyTuple_SetItem (argsP, 1, async->userdataP);
 
-        PyTuple_SetItem (argsP, 0, PyCapsule_New(userdata, GLUE_AFB_UID, NULL));
         PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);

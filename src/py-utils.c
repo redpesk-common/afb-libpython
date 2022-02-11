@@ -495,7 +495,7 @@ static void PyRqtFree(void *userdata)
 // add a reference on Glue handle
 void PyRqtAddref(GlueHandleT *glue) {
     if (glue->magic == GLUE_RQT_MAGIC) {
-        afb_req_unref (glue->rqt.afb);
+        afb_req_addref (glue->rqt.afb);
     }
 }
 

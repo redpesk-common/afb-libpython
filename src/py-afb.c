@@ -232,24 +232,36 @@ OnErrorExit:
 }
 
 // this routine execute within mainloop context when binder is ready to go
-static PyObject* GlueLoopEnter(PyObject *self, PyObject *argsP)
+static PyObject* GlueLoopStart(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: mainloop([callback])";
+    const char *errorMsg = "syntax: loopstart(binder,[callback],[userdta])";
     int status;
 
 
     long count = PyTuple_GET_SIZE(argsP);
-    if (count > GLUE_ONE_ARG) goto OnErrorExit;
+    if (count <GLUE_ONE_ARG || count >GLUE_THREE_ARG) goto OnErrorExit;
 
-    PyObject *callbackP= PyTuple_GetItem(argsP,0);
-    if (callbackP) {
-        if (!PyCallable_Check(callbackP)) goto OnErrorExit;
-        Py_IncRef(callbackP);
+    GlueAsyncCtxT *async= calloc(1, sizeof(GlueAsyncCtxT));
+
+    GlueHandleT *glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
+    if (!glue || !GlueGetApi(glue)) goto OnErrorExit;
+
+    if (count >= GLUE_TWO_ARG) {
+        async->callbackP= PyTuple_GetItem(argsP,1);
+        if (async->callbackP) {
+            if (!PyCallable_Check(async->callbackP)) goto OnErrorExit;
+            Py_IncRef(async->callbackP);
+        }
+    }
+
+    if (count >= GLUE_THREE_ARG) {
+        async->userdataP= PyTuple_GetItem(argsP,2);
+        Py_IncRef(async->userdataP);
     }
 
     // main loop only return when binder startup func return status!=0
     GLUE_AFB_NOTICE(afbMain, "Entering binder mainloop");
-    status = AfbBinderStart(afbMain->binder.afb, callbackP, GlueStartupCb, afbMain);
+    status = AfbBinderStart(afbMain->binder.afb, async, GlueStartupCb, glue);
 
     return PyLong_FromLong ((long)status);
 
@@ -1099,7 +1111,7 @@ static PyMethodDef MethodsDef[] = {
     {"binder"        , GlueBinderConf       , METH_VARARGS, "Configure and create afbMain glue"},
     {"config"        , GlueGetConfig        , METH_VARARGS, "Return glue handle full/partial config"},
     {"apiadd"        , GlueApiCreate        , METH_VARARGS, "Add a new API to the binder"},
-    {"loopstart"     , GlueLoopEnter        , METH_VARARGS, "Activate mainloop and exec startup callback"},
+    {"loopstart"     , GlueLoopStart        , METH_VARARGS, "Activate mainloop and exec startup callback"},
     {"reply"         , GlueReply            , METH_VARARGS, "Explicit response tp afb request"},
     {"binding"       , GlueBindingLoad      , METH_VARARGS, "Load binding an expose corresponding api/verbs"},
     {"callasync"     , GlueCallAsync        , METH_VARARGS, "AFB asynchronous subcall"},

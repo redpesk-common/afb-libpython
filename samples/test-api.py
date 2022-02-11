@@ -67,22 +67,15 @@ def EventGet5Test(binder, userdata):
         libafb.evtdelete(userdata['evtfd'])
     return status
 
-# minimalist test framework
-myTestCase = [
-    {'uid':'event-ticstart' ,'callback': StartEventTimer, 'userdata':None,'expect':0, 'info':'start helloworld binding timer'},
-    {'uid':'event-subscribe','callback': EventSubscribe , 'userdata':None,'expect':0, 'info':'subscribe to hellworld event'},
-    {'uid':'event-getcount' ,'callback': EventGet5Test  , 'userdata':{'timeout':10,'count':5}, 'expect': 5, 'info':'wait for 5 helloworld event'},
-]
-
 # executed when binder and all api/interfaces are ready to serv
-def StartTest(binder):
+def StartTest(binder, testcase):
     #global myTestCase
     status=0
     timeout=5 # seconds
     libafb.notice(binder, "StartTest binder=[%s]", libafb.config(binder, "uid"))
 
     # loop on all tests
-    for test in myTestCase:
+    for test in testcase:
         libafb.info (binder, "testing uid=%s info=%s" % (test['uid'], test['info']))
         status= test['callback'](binder, test['userdata'])
         if (status != test['expect']):
@@ -114,9 +107,16 @@ binder= libafb.binder(binderOpts)
 hello = libafb.binding(bindingOpts)
 status= 0
 
+# minimalist test framework
+myTestCase = [
+    {'uid':'event-ticstart' ,'callback': StartEventTimer, 'userdata':None,'expect':0, 'info':'start helloworld binding timer'},
+    {'uid':'event-subscribe','callback': EventSubscribe , 'userdata':None,'expect':0, 'info':'subscribe to hellworld event'},
+    {'uid':'event-getcount' ,'callback': EventGet5Test  , 'userdata':{'timeout':10,'count':5}, 'expect': 5, 'info':'wait for 5 helloworld event'},
+]
+
 # enter binder main loop and launch test callback
 try:
-    status=libafb.loopstart(StartTest)
+    status=libafb.loopstart(binder, StartTest, myTestCase)
 except Exception:
     libafb.error(binder, "loopstart raise an exception error=%s", sys.exc_info()[0])
 finally:

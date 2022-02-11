@@ -49,8 +49,6 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
                 if ( handle->event.configP) Py_DecRef(handle->event.configP);
             }
             break;
-        case GLUE_API_MAGIC:
-            break;
         case GLUE_JOB_MAGIC:
             if (handle->usage < 0) {
                 Py_DecRef(handle->job.async.callbackP);
@@ -65,6 +63,13 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
                 if (handle->timer.async.userdataP)Py_DecRef(handle->timer.async.userdataP);
             }
             break;
+
+        case GLUE_API_MAGIC:    // as today removing API is not supported bu libafb
+        case GLUE_RQT_MAGIC:    // rqt live cycle is handle directly by libafb
+        case GLUE_BINDER_MAGIC: // afbmain should never be released
+            handle->usage=1; // static handle
+            break;
+
         default:
             goto OnErrorExit;
     }
@@ -72,7 +77,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
     return;
 
 OnErrorExit:
-    ERROR ("try to release a non glue handle");
+    ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
 }
 
 void GlueFreeCapculeCb(PyObject *capculeP) {
@@ -114,7 +119,8 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     // prepare calling argument list
     PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nparams+GLUE_ONE_ARG);
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
+    glue->usage++;
+    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
 
     // retreive input arguments and convert them to json
     for (int idx = 0; idx < nparams; idx++)
@@ -233,7 +239,8 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
         // effectively exec PY script code
         GLUE_AFB_NOTICE(glue,"GlueCtrlCb: state=[%s]", state);
         PyThreadState_Swap(GetPrivateData());
-        PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, NULL), state);
+        glue->usage++;
+        PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb), state);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
@@ -246,25 +253,30 @@ OnErrorExit:
 }
 
 // this routine execute within mainloop userdata when binder is ready to go
-int GlueStartupCb(void *callback, void *userdata)
+int GlueStartupCb(void *config, void *userdata)
 {
-    PyObject *callbackP= (PyObject*) callback;
+    GlueAsyncCtxT *async= (GlueAsyncCtxT*) config;
     GlueHandleT *ctx = (GlueHandleT *)userdata;
     assert(ctx && ctx->magic == GLUE_BINDER_MAGIC);
     int status=0;
 
-    if (callbackP)
+    if (async->callbackP)
     {
-        // get callback name
-
-        // in 3.10 should be replace by PyObject_CallOneArg(callbackP, handleP);
+        PyObject *argsP;
         PyThreadState_Swap(GetPrivateData());
-        PyObject *argsP= PyTuple_New(GLUE_ONE_ARG);
+        argsP= PyTuple_New(GLUE_TWO_ARG);
+
+        if (!async->userdataP) PyTuple_SetItem (argsP, 1, Py_None);
+        else PyTuple_SetItem (argsP, 1, async->userdataP);
+
         PyTuple_SetItem (argsP, 0, PyCapsule_New(userdata, GLUE_AFB_UID, NULL));
-        PyObject *resultP= PyObject_Call (callbackP, argsP, NULL);
+        PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
+        Py_DECREF (async->callbackP);
+        if (async->userdataP) Py_DECREF (async->userdataP);
+        free (async);
     }
     return status;
 
@@ -330,9 +342,9 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
     }
 
     // prepare calling argument list
-    glue->usage++;
     PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nreplies+GLUE_THREE_ARG);
+    glue->usage++;
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
     if (label) PyTuple_SetItem (argsP, 1, PyUnicode_FromString(label));
     else PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));

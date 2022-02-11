@@ -51,7 +51,7 @@ def subscribeCB(rqt, *args):
     return 0 # implicit respond
 
 def unsubscribeCB(rqt, *args):
-    libafb.notice  (rqt, "subscribing api event")
+    libafb.notice  (rqt, "unsubscribing api event")
     libafb.evtunsubscribe (rqt, evtid)
     return 0 # implicit respond
 

@@ -44,10 +44,10 @@ struct PyBinderHandleS {
 };
 
 struct PyJobHandleS {
-    GlueAsyncCtxT async;
     struct afb_sched_lock *afb;
     afb_api_t  apiv4;
     long status;
+    GlueAsyncCtxT async;
 };
 
 struct PyApiHandleS {

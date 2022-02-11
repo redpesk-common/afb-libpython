@@ -544,7 +544,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: eventpush(event, [arg1...argn])";
+    const char *errorMsg = "syntax: eventpush(evtid, [arg1...argn])";
     long count = PyTuple_GET_SIZE(argsP);
     afb_data_t params[count];
     long index=0;
@@ -581,7 +581,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtSubscribe(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: subscribe(rqt,eventid)";
+    const char *errorMsg = "syntax: subscribe(rqt,evtid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_TWO_ARG) goto OnErrorExit;
@@ -608,7 +608,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: unsubscribe(rqt,eventid)";
+    const char *errorMsg = "syntax: unsubscribe(rqt,evtid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != GLUE_TWO_ARG) goto OnErrorExit;
@@ -635,7 +635,7 @@ OnErrorExit:
 
 static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: eventid= eventnew(api,label)";
+    const char *errorMsg = "syntax: evtid= eventnew(api,label)";
     afb_event_t evtid;
     int err;
 
@@ -648,7 +648,7 @@ static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
     const char *label= PyUnicode_AsUTF8(PyTuple_GetItem(argsP,1));
     if (!label) goto OnErrorExit;
 
-    err= afb_api_new_event(glue->api.afb, strdup(label), &evtid);
+    err= afb_api_new_event(GlueGetApi(glue), strdup(label), &evtid);
     if (err)
     {
         errorMsg = "(hoops) afb-afb_api_new_event fail";
@@ -958,7 +958,7 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject* GlueJobstart(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "jobstart(handle, callback, timeout, [userdata])";
     GlueHandleT *handle=NULL;
@@ -1126,7 +1126,7 @@ static PyMethodDef MethodsDef[] = {
     {"timeraddref"   , GlueTimerAddref      , METH_VARARGS, "Addref to existing timer"},
     {"timernew"      , GlueTimerNew         , METH_VARARGS, "Create a new timer"},
     {"setloa"        , GlueSetLoa           , METH_VARARGS, "Set LOA (LevelOfAssurance)"},
-    {"jobstart"      , GlueJobstart         , METH_VARARGS, "Register a mainloop waiting lock"},
+    {"jobstart"      , GlueJobStart         , METH_VARARGS, "Register a mainloop waiting lock"},
     {"jobkill"       , GlueJobKill          , METH_VARARGS, "Unlock jobstart"},
     {"jobpost"       , GlueJobPost          , METH_VARARGS, "Post a job after timeout(ms)"},
     {"jobcancel"     , GlueJobcancel        , METH_VARARGS, "Cancel a jobpost timer"},

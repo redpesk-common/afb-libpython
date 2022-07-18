@@ -2,6 +2,7 @@ build*
 package
 nbproject/
 .stfolder
+.cache
 .*.sw*
 *.tar.gz
 __*.pyc

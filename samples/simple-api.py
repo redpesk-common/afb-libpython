@@ -28,7 +28,6 @@ count=0
 def pingCB(rqt, *args):
     global count
     count += 1
-    libafb.notice  (rqt, "From pingCB count=%d", count)
     return (0, {"pong":count}) # implicit response
 
 def argsCB(rqt, *args):
@@ -36,7 +35,7 @@ def argsCB(rqt, *args):
     libafb.reply (rqt, 0, {'query': args})
 
 ## executed when binder is ready to serv
-def loopBinderCb(binder):
+def loopBinderCb(binder, nohandle):
     libafb.notice(binder, "loopBinderCb=%s", libafb.config(binder, "uid"))
     return 0 # keep running for ever
 
@@ -72,7 +71,7 @@ binder= libafb.binder(demoOpts)
 myapi = libafb.apiadd(demoApi)
 
 # enter loopstart
-status= libafb.loopstart(loopBinderCb)
+status= libafb.loopstart(binder, loopBinderCb)
 if status < 0 :
     libafb.error (binder, "OnError loopstart Exit")
 else:

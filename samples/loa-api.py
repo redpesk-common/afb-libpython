@@ -55,7 +55,7 @@ def checkLoaCB(rqt, *args):
 
 
 # executed when binder and all api/interfaces are ready to serv
-def mainLoopCB(binder):
+def mainLoopCB(binder, nohandle):
     libafb.notice(binder, "mainLoopCB=[%s]", libafb.config(binder, "uid"))
     return 0 # keep running for ever
 
@@ -105,7 +105,7 @@ binder= libafb.binder(loaOpts)
 myapi = libafb.apiadd(loaApi)
 
 # should never return
-status= libafb.loopstart(mainLoopCB)
+status= libafb.loopstart(binder, mainLoopCB)
 if status < 0:
     libafb.error (binder, "OnError loopstart Exit")
 else:

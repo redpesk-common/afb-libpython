@@ -1,6 +1,6 @@
 # afb-libpython
 
-Exposes afb-libafb to python scripting language. This module allows to script in python to either mock binding api, test client, quick prototyping, ... Afb-libpython runs as a standard python C module, it provides a full access to afb-libafb functionalities, subcall, event, acls, mainloop control, ...
+Exposes afb-libafb to python scripting language. This module allows to script in python to either mock binding api, test client, quick prototyping, ... Afb-libpython runs as a standard python C module, it provides a full access to afb-libafb functionalities, subcall, event, acls, loopstart control, ...
 
 ## Dependency
 
@@ -23,9 +23,10 @@ Exposes afb-libafb to python scripting language. This module allows to script in
 Make sure that your dependencies are reachable from python scripting engine, before starting your test.
 
 ```bash
-    export LD_LIBRARY_PATH=/path/to/afb-libglue.so
-    export PYTHONPATH=/path/to/afb-libafb.so
+    export LD_LIBRARY_PATH=/path/to/'afb-libglue.so'
+    export PYTHONPATH=/path/to/'_afbpyglue.so'
     python3 sample/simple-api.python
+    #http://localhost:1234/devtools
 ```
 ## Debug from codium
 
@@ -217,15 +218,30 @@ In following example, timer runs forever every 'tictime' and call TimerCallback'
 
 afb-libafb timer API is exposed in python
 
-## Binder MainLoop
+## Binder loopstart
 
-Under normal circumstance binder mainloop never returns. Nevertheless during test phase it is very common to wait and asynchronous event(s) before deciding if the test is successfully or not.
-Mainloop starts with libafb.mainloop('xxx'), where 'xxx' is an optional startup function that control mainloop execution. They are two ways to control the mainloop:
+Under normal circumstance binder loopstart never returns. Nevertheless during test phase it is very common to wait and asynchronous event(s) before deciding if the test is successfully or not.
+loopstart starts with libafb.loopstart(binder, ['xxx', handle]), where 'xxx' is an optional startup function that control loopstart execution. They are two ways to control the loopstart:
 
-* when startup function returns ```status!=0``` the binder immediately exit with corresponding status. This case is very typical when running pure synchronous api test.
-* set a shedwait lock and control the main loop from asynchronous events. This later case is mandatory when we have to start the mainloop to listen event, but still need to exit it to run a new set of test.
+### startdard mode
 
-Mainloop schedule wait is done with ```libafb.jobstart(binder,'xxx',timeout,{optional-user-data})```. Where 'xxx' is the name of the control callback that received the lock. jobstart is released with ``` libafb.jobkill(rqt/evt,lock,status)```
+startup function returns ```status!=0``` the binder immediately exit with corresponding status. This case is very typical when running pure synchronous api test.
+
+```python
+# create binder
+binder= libafb.binder(binderOpts)
+
+# enter binder main loop and launch startup callback
+status= libafb.loopstart(binder, loopBinderCb)
+if status < 0 :
+    libafb.error (binder, "OnError loopstart Exit")
+else:
+    libafb.notice(binder, "OnSuccess loopstart Exit")
+```
+
+### jobstart mode
+
+Use a shedwait lock to control the main loop from asynchronous events. This later case is mandatory when we have to start the loopstart to listen event, but still need to exit it to run a new set of test.
 
 In following example:
 * jobstart callback starts an event handler and passes the lock as evt context
@@ -254,7 +270,7 @@ Note:
         return 0
 
     # executed when binder and all api/interfaces are ready to serv
-    def startTestCB(binder):
+    def startTestCB(binder, handle):
         status=0
         timeout=4 # seconds
         libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
@@ -263,10 +279,10 @@ Note:
         status= libafb.jobstart(binder, timeout, jobstartCB, None)
 
         libafb.notice (binder, "test done status=%d", status)
-        return(status) # negative status force mainloop exit
+        return(status) # negative status force loopstart exit
 
-    # start mainloop
-    status=libafb.mainloop(startTestCB)
+    # start loopstart
+    status=libafb.loopstart(binder, startTestCB, handle)
 ```
 
 ## Miscellaneous APIs/utilities

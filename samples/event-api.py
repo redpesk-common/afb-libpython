@@ -83,7 +83,7 @@ def apiControlCb(api, state):
     return 0 # 0=ok -1=fatal
 
 # executed when binder and all api/interfaces are ready to serv
-def mainLoopCb(binder):
+def mainLoopCb(binder, nohandle):
     libafb.notice(binder, "startBinderCb=[%s]", libafb.config(binder, "uid"))
     # implement here after your startup/eventing code
     # ...
@@ -124,7 +124,7 @@ binder= libafb.binder(binderOpts)
 myapi = libafb.apiadd(apiOpts)
 
 # should never return
-status= libafb.loopstart(mainLoopCb)
+status= libafb.loopstart(binder, mainLoopCb)
 if status < 0:
     libafb.error (binder, "OnError loopstart Exit")
 else:

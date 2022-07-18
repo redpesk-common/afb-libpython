@@ -83,7 +83,7 @@ def controlApiCB(api, state):
     return 0 # ok
 
 # executed when binder and all api/interfaces are ready to serv
-def mainLoopCb(binder):
+def mainLoopCb(binder, nohandle):
     libafb.notice(binder, "mainLoopCb=[%s]", libafb.config(binder, "uid"))
     # callsync return a tuple (status is [0])
     response= libafb.callsync(binder, "helloworld-event", "startTimer")
@@ -147,13 +147,13 @@ BinderOpts = {
 }
 
 # create and start binder
-libafb.binder(BinderOpts)
+binder= libafb.binder(BinderOpts)
 libafb.binding(HelloBinding)
 libafb.binding(EventBinding)
 libafb.apiadd(demoApi)
 
 # should never return
-status= libafb.loopstart(mainLoopCb)
+status= libafb.loopstart(binder, mainLoopCb)
 if status < 0:
     libafb.error (binder, "OnError loopstart Exit")
 else:

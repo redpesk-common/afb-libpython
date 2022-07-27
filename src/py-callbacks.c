@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <wrap-json.h>
+#include <libafb/utils/wrap-json.h>
 
 #include <glue-afb.h>
 #include <glue-utils.h>

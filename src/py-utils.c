@@ -252,7 +252,7 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
 
     Py_ssize_t tupleSize = PyTuple_Size(args);
     if (tupleSize < 2) {
-        errorMsg= "syntax afbprint(handle, format, ...)";
+        errorMsg= "syntax error: not enough arguments for afbprint(handle, format, ...)";
         goto OnErrorExit;
     }
 

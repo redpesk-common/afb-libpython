@@ -1,13 +1,16 @@
 # afb-libpython
 
-Exposes afb-libafb to python scripting language. This module allows to script in python to either mock binding api, test client, quick prototyping, ... Afb-libpython runs as a standard python C module, it provides a full access to afb-libafb functionalities, subcall, event, acls, loopstart control, ...
+Exposes afb-libafb to the Python scripting language. This module allows to
+script in Python to either mock binding apis, test a client, quick prototyping,
+... `afb-libpython` runs as a standard Python C module, providing full access to
+`afb-libafb` functionality, subcalls, events, ACLs, loopstart control, etc.
 
-## Dependency
+## Dependencies
 
-* afb-libafb (from jan/2022 version)
-* afb-libglue
-* python3
-* afb-cmake-modules
+* `afb-libafb` (from jan/2022 version)
+* `afb-libglue`
+* `python3`
+* `afb-cmake-modules`
 
 ## Building
 
@@ -20,7 +23,7 @@ Exposes afb-libafb to python scripting language. This module allows to script in
 
 ## Testing
 
-Make sure that your dependencies are reachable from python scripting engine, before starting your test.
+Make sure that your dependencies are reachable from the Python scripting engine, before starting your test.
 
 ```bash
     export LD_LIBRARY_PATH=/path/to/'afb-libglue.so'
@@ -28,25 +31,29 @@ Make sure that your dependencies are reachable from python scripting engine, bef
     python3 sample/simple-api.python
     #http://localhost:1234/devtools
 ```
+
 ## Debug from codium
 
-Codium does not include GDP profile by default you should get them from Ms-Code repository
+Codium does not include the GDP profile by default, you should get it from the Ms-Code repository
 
-Go to code market place and download a version compatible with your editor version:
+Go to the VSCode marketplace and download a version compatible with your editor version:
 
 * https://github.com/microsoft/vscode-cpptools/releases
 * https://github.com/microsoft/vscode-python/releases
 
-Install your extention
+Install your extension
 
-* codium --install-extension cpptools-linux.vsix
-* codium --install-extension ms-python-release.vsix
+```bash
+codium --install-extension cpptools-linux.vsix
+codium --install-extension ms-python-release.vsix
+```
 
-WARNING: the lastest version is probably not compatible with your codium version.
+WARNING: the latest version is probably not compatible with your codium version.
 
 ## Import afb-pythonglue
 
-Your python script should import afb-pythonglue. require return a table which contains the c-module api.
+Your Python script should import `afb-pythonglue`. This require returns a table
+which contains the C module api.
 
 ```python
     #!/usr/bin/python3
@@ -58,11 +65,13 @@ Your python script should import afb-pythonglue. require return a table which co
 
 ## Configure binder services/options
 
-When running mock binding APIs a very simple configuration as following one should be enough. For full options of libafb.binder check libglue API documentation.
+When running mock binding APIs a very simple configuration like the following one
+should be enough. For the full options of `libafb.binder` check the libglue API
+documentation.
 
 
 ```python
-    # define and instanciate libafb-binder
+    # define and instantiate libafb-binder
     binderOpts = {
         'uid'     : 'py-binder',
         'port'    : 1234,
@@ -73,7 +82,8 @@ When running mock binding APIs a very simple configuration as following one shou
     binder= libafb.binder(binderOpts)
 ```
 
-For HTTPS cert+key should be added. Optionally a list of aliases and ldpath might also be added
+For HTTPS a certificate and a key should be added. Optionally, a list of aliases
+and ldpath might also be added.
 
 ```python
     # define and instanciate libafb-binder
@@ -91,9 +101,13 @@ For HTTPS cert+key should be added. Optionally a list of aliases and ldpath migh
 
 ## Exposing api/verbs
 
-afb-libpython allows user to implement api/verb directly in scripting language. When api is export=public corresponding api/verbs are visible from HTTP. When export=private they remain visible only from internal calls. Restricted mode allows to exposer API as unix socket with uri='unix:@api' tag.
+`afb-libpython` allows users to implement api/verbs directly in a scripting
+language. When an api is marked `export=public` the corresponding api/verbs are
+visible from HTTP. When `export=private` they remain visible only from internal
+calls. `export=restricted` allows to expose an API as a unix socket only, with the
+uri='unix:@api' tag.
 
-Expose a new api with ```libafb.apiadd(demoApi)``` as in following example.
+Expose a new api with ```libafb.apiadd(demoApi)``` as in the following example.
 
 ```python
 ## ping/pong test func
@@ -109,7 +123,7 @@ demoVerbs = [
     {'uid':'py-args', 'verb':'args', 'callback':argsCB, 'info':'py check input query', 'sample':[{'arg1':'arg-one', 'arg2':'arg-two'}, {'argA':1, 'argB':2}]},
 ]
 
-## define and instanciate API
+## define and instanciate an API
 demoApi = {
     'uid'     : 'py-demo',
     'api'     : 'demo',
@@ -126,9 +140,16 @@ myapi= libafb.apiadd(demoApi)
 
 ## API/RQT Subcalls
 
-Both synchronous and asynchronous call are supported. The fact the subcall is done from a request or from a api context is abstracted to the user. When doing it from RQT context client security context is not propagated and remove event are claimed by the python api.
+Both synchronous and asynchronous call are supported. The fact that the subcall is
+done from a request or from an api context is abstracted to the user. When doing
+it from a request context the client security context is not propagated and the
+removal events are claimed by the Python API.
 
-Explicit response to a request is done with ``` libafb.reply(rqt,status,arg1,..,argn)```. When running a synchronous request an implicit response may also be done with ```return(status, arg1,...,arg-n)```. Note that with afb-v4 an application may return zero, one or many data.
+Explicit response to a request is done with ```
+libafb.reply(rqt,status,arg1,..,argn)```. When running a synchronous request an
+implicit response may also be done with ```return(status, arg1,...,arg-n)```.
+
+Note that with AFB v4, an application may return zero, one or many data.
 
 ```python
 def asyncRespCB(rqt, status, ctx, *args):
@@ -152,7 +173,12 @@ def asyncCB(rqt, *args):
 
 ## Events
 
-Event should attached to an API. As binder as a building secret API, it is nevertheless possible to start a timer directly from a binder. Under normal circumstances, event should be created from API control callback, when API it's state=='ready'. Note that it is developer responsibility to make pythonEvent handle visible from the function that create the event to the function that use the event.
+Event should be attached to an API. As binders automatically have an underlying
+(unpublished) API, it is nevertheless possible to start a timer directly from a
+binder. Under normal circumstances, events should be created from an API control
+callback, when API has `state=='ready'`. Note that it is the developer responsibility
+to make the pythonEvent handle visible from the function that creates the event
+to the function that uses the event.
 
 ```python
     def apiControlCb(api, state):
@@ -185,7 +211,9 @@ Event should attached to an API. As binder as a building secret API, it is never
 
 ```
 
-Client event subscription is handle with evtsubscribe|unsubcribe api. Subscription API should be call from a request context as in following example, extracted from sample/event-api.python
+Client event subscription is handled with the `evtsubscribe|unsubcribe` API.
+The subscription API should be called from a request context as in the following
+example, extracted from [samples/event-api.py](samples/event-api.py):
 
 ```python
     def subscribeCB(rqt, *args):
@@ -201,8 +229,11 @@ Client event subscription is handle with evtsubscribe|unsubcribe api. Subscripti
 
 ## Timers
 
-Timer are typically used to push event or to handle timeout. Timer is started with ```libafb.timernew``` Timer configuration includes a callback, a ticktime in ms and a number or run (count). When count==0 timer runs infinitely.
-In following example, timer runs forever every 'tictime' and call TimerCallback' function. This callback being used to send an event.
+Timers are typically used to push events or to handle timeouts. A timer is started
+with ```libafb.timernew()```. A timer configuration includes a callback, a ticktime
+in ms and a number of runs (count). When `count==0` the timer runs indefinitely.
+In the following example, a timer runs forever every 'ticktime' and calls
+the `timerCB` function.
 
 ```python
     def timerCB (timer, count, userdata):
@@ -210,22 +241,29 @@ In following example, timer runs forever every 'tictime' and call TimerCallback'
         # return -1 should terminate timer
 
     timer= libafb.timernew (api,
-        {'uid':'py-timer','callback':timerCB, 'period':tictime, 'count':0}
+        {'uid':'py-timer','callback':timerCB, 'period':ticktime, 'count':0}
         , evtid)
     if (timer is None):
-        raise Exception ('fail to create timer')
+        raise Exception ('failed to create timer')
 ```
 
-afb-libafb timer API is exposed in python
+The `afb-libafb` timer API is exposed in Python.
 
 ## Binder loopstart
 
-Under normal circumstance binder loopstart never returns. Nevertheless during test phase it is very common to wait and asynchronous event(s) before deciding if the test is successfully or not.
-loopstart starts with libafb.loopstart(binder, ['xxx', handle]), where 'xxx' is an optional startup function that control loopstart execution. They are two ways to control the loopstart:
+Under normal circumstances the binder loopstart never returns. Nevertheless,
+during test phases it is very common to wait for asynchronous events before
+deciding if the test is successfully or not.
 
-### startdard mode
+loopstart is started with `libafb.loopstart(binder, ['xxx', handle])`, where `xxx' is
+an optional startup function that controls loopstart execution. There are two ways
+to control the loopstart: standard and jobstart modes.
 
-startup function returns ```status!=0``` the binder immediately exit with corresponding status. This case is very typical when running pure synchronous api test.
+### standard mode
+
+If the startup function returns a non-zero status, the binder immediately exits with
+the corresponding status. This case is very typical when running pure
+synchronous API tests.
 
 ```python
 # create binder
@@ -241,17 +279,22 @@ else:
 
 ### jobstart mode
 
-Use a shedwait lock to control the main loop from asynchronous events. This later case is mandatory when we have to start the loopstart to listen event, but still need to exit it to run a new set of test.
+This uses a `schedwait` lock to control the main loop from the asynchronous events.
+This later case is mandatory when we have to start the loopstart to listen
+to events, but still need to exit to run a new set of tests.
 
-In following example:
-* jobstart callback starts an event handler and passes the lock as evt context
-* event handler: count the number of event and after 5 events release the lock.
+In the following example:
+* `jobstartCB` callback starts an event handler and passes the lock as an event context
+* the event handler counts the number of events and after 5 events releases the lock.
 
-Note:
+Notes:
 
-* libafb.jobstart does not return before the lock is releases. As for events it is the developer responsibility to either carry the lock in a context or to store it within a share space, on order unlock function to access it.
+* `libafb.jobstart` does not return before the lock is released. As for events, it
+  is the developer responsibility to either carry the lock in a context or to
+  store it within a shared space, to order the unlock function to access it.
 
-* it is possible to serialize libafb.jobstart in order to build asynchronous cascade of asynchronous tests.
+* it is possible to serialize `libafb.jobstart` in order to build an asynchronous
+  cascade of asynchronous tests.
 
 ```python
 
@@ -263,13 +306,12 @@ Note:
             libafb.notice (evt, "*** EventReceiveCB releasing lock ***");
             libafb.jobkill (evt, lock, evtCount)
 
-
     def jobstartCB(api, lock, context):
         libafb.notice (api, "Schedlock timer-event handler register")
         libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
         return 0
 
-    # executed when binder and all api/interfaces are ready to serv
+    # executed when binder and all api/interfaces are ready to serve
     def startTestCB(binder, handle):
         status=0
         timeout=4 # seconds
@@ -279,7 +321,7 @@ Note:
         status= libafb.jobstart(binder, timeout, jobstartCB, None)
 
         libafb.notice (binder, "test done status=%d", status)
-        return(status) # negative status force loopstart exit
+        return(status) # negative status forces loopstart exit
 
     # start loopstart
     status=libafb.loopstart(binder, startTestCB, handle)
@@ -287,7 +329,7 @@ Note:
 
 ## Miscellaneous APIs/utilities
 
-* libafb.clientinfo(rqt): returns client session info.
-* libafb.pythonstrict(true): prevents python from creating global variables.
-* libafb.config(handle, "key"): returns binder/rqt/timer/... config
-* libafb.notice|warning|error|debug print corresponding hookable syslog trace
+* `libafb.clientinfo(rqt)`: returns client session info.
+* `libafb.pythonstrict(true)`: prevents Python from creating global variables.
+* `libafb.config(handle, "key")`: returns binder/rqt/timer/... config
+* `libafb.notice|warning|error|debug()`: print corresponding hookable syslog trace

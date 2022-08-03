@@ -76,6 +76,7 @@ set (PKG_REQUIRED_LIST
 	python3
 	libafb
 	libafb-glue
+	librp-utils
 )
 
 # Print a helper message when every thing is finished

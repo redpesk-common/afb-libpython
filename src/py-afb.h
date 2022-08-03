@@ -23,7 +23,7 @@
 #pragma once
 #include <semaphore.h>
 
-#include <libafb/sys/verbose.h>
+#include <rp-utils/rp-verbose.h>
 #include "glue-afb.h"
 #include <json-c/json.h>
 

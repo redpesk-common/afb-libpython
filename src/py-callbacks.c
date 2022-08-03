@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <libafb/utils/wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
 
 #include <glue-afb.h>
 #include <glue-utils.h>
@@ -77,7 +77,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
     return;
 
 OnErrorExit:
-    ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
+    RP_ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
 }
 
 void GlueFreeCapculeCb(PyObject *capculeP) {
@@ -305,7 +305,7 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
     if (infoP) info=PyUnicode_AsUTF8(infoP);
 
     json_object *metaJ;
-    wrap_json_pack (&metaJ, "{ss ss*}"
+    rp_jsonc_pack (&metaJ, "{ss ss*}"
         ,"uid", uid
         ,"info", info
     );
@@ -325,9 +325,9 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
     }
     // info devtool require a group array
     json_object *groupsJ, *infoJ;
-    wrap_json_pack(&groupsJ, "[{so}]", "verbs", verbsJ);
+    rp_jsonc_pack(&groupsJ, "[{so}]", "verbs", verbsJ);
 
-    wrap_json_pack(&infoJ, "{so so}", "metadata", metaJ, "groups", groupsJ);
+    rp_jsonc_pack(&infoJ, "{so so}", "metadata", metaJ, "groups", groupsJ);
     afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, infoJ, 0, (void *)json_object_put, infoJ);
     afb_req_reply(afbRqt, 0, 1, &reply);
     return;

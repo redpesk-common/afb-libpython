@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <libafb/utils/wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
 
 #include "py-afb.h"
 #include "py-utils.h"

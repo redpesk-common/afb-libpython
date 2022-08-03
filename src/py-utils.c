@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <libafb/utils/wrap-json.h>
+#include <rp-utils/rp-jsonc.h>
 #include <pthread.h>
 
 #include <glue-afb.h>
@@ -206,7 +206,7 @@ void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, con
         break;
 
     default:
-        vverbose(level, file, line, func, fmt, args);
+        rp_vverbose(level, file, line, func, fmt, args);
         break;
     }
     return;
@@ -342,7 +342,7 @@ json_object *PyJsonDbg(const char *message)
         funcname= PyUnicode_AsUTF8(traceback->tb_frame->f_code->co_name);
     }
 
-    wrap_json_pack(&errorJ, "{ss* ss* si* ss* ss*}", "message", message, "source", filename, "line", linenum, "name", funcname, "info", info);
+    rp_jsonc_pack(&errorJ, "{ss* ss* si* ss* ss*}", "message", message, "source", filename, "line", linenum, "name", funcname, "info", info);
     return (errorJ);
 }
 
@@ -411,7 +411,7 @@ json_object *pyObjToJson(PyObject* objP)
             if (funcnameP) Py_DecRef(funcnameP);
     }
     else {
-        ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));
+        RP_ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));
         valueJ = NULL;
     }
 
@@ -470,11 +470,11 @@ PyObject * jsonToPyObj(json_object *argsJ)
         resultP= PyFloat_FromDouble(json_object_get_double(argsJ));
         break;
     case json_type_null:
-        NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
+        RP_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
         resultP=NULL;
         break;
     default:
-        ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));
+        RP_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));
         goto OnErrorExit;
     }
     return resultP;

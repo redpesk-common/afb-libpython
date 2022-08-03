@@ -27,7 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <libafb/utils/wrap-json.h>
+
+#include <rp-utils/rp-jsonc.h>
 
 #include "longobject.h"
 #include "object.h"
@@ -197,7 +198,7 @@ static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
     }
 
     const char *afbApiUri = NULL;
-    wrap_json_unpack(configJ, "{s?s}", "uri", &afbApiUri);
+    rp_jsonc_unpack(configJ, "{s?s}", "uri", &afbApiUri);
     if (afbApiUri)
     {
         // imported shadow api

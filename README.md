@@ -138,6 +138,46 @@ demoApi = {
 myapi= libafb.apiadd(demoApi)
 ```
 
+## Importing an API
+
+`afb-libpython` also allows to import an existing API from a different binder
+context into the current binder.
+
+In the following example, the 'demo-remote' API is imported from a remote binder
+running on host `remote_host` on port `21212` over TCP into the current binder.
+It is subsequently made public under its original name, `demo-remote`.
+
+```python
+imported_demo_api = {
+    'uid'    : 'py-demo-import-api',
+    'export' : 'public',
+    'uri'    : 'tcp:remote_host:21212/demo-remote',
+}
+```
+
+This example imports the same API from the same location but marks it as
+protected. It is thus made available over a Unix socket only, under a newly
+defined name, `demo-remote-over-unix`. Note that it is an error to mark an API
+as `protected` and not provide a new URI to define its exported name.
+
+```python
+imported_demo_api = {
+    'uid'    : 'py-demo-import-api',
+    'export' : 'public',
+    'uri'    : 'tcp:remote_host:21212/demo-remote',
+}
+```
+
+Finally, this example imports the same API but marks it as private:
+
+```python
+imported_demo_api = {
+    'uid'    : 'py-demo-import-api',
+    'export' : 'private',
+    'uri'    : 'tcp:remote_host:21212/demo-remote',
+}
+```
+
 ## API/RQT Subcalls
 
 Both synchronous and asynchronous call are supported. The fact that the subcall is

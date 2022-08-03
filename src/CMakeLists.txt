@@ -16,16 +16,20 @@
 
 PROJECT_TARGET_ADD(afbpyglue)
 
-	# compile any C file starting with a lower case
-	file(GLOB CSOURCES [a-z]*.c)
+    find_package (Python3 COMPONENTS Interpreter Development)
+    set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 
-	# Define project Targets
-    add_library(${TARGET_NAME} SHARED ${CSOURCES})
+    # Define project Targets
+    add_library(${TARGET_NAME} SHARED py-afb.c py-callbacks.c py-utils.c)
     target_link_libraries(${TARGET_NAME} libafb-glue.so)
 
-	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-		PREFIX "_"
-		LABELS "LIBRARY"
-		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*${TARGET_NAME}.so
-		OUTPUT_NAME ${TARGET_NAME}
-	)
+    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+        PREFIX "_"
+        LABELS "LIBRARY"
+        OUTPUT_NAME ${TARGET_NAME}.${Python3_SOABI}
+	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so
+    )
+
+    INSTALL(TARGETS ${TARGET_NAME}
+        DESTINATION ${DLDIR}
+    )

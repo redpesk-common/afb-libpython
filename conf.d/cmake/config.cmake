@@ -20,7 +20,7 @@ set(CMAKE_INSTALL_SO_NO_EXE 0)
 
 # Project Info
 # ------------------
-set(PROJECT_NAME afb-python-binder)
+set(PROJECT_NAME afb-libpython)
 set(PROJECT_VERSION "1.0")
 set(PROJECT_PRETTY_NAME "Gluelib for Python to afb-libafb")
 set(PROJECT_DESCRIPTION "Provide glue to user afb-libafb from python")

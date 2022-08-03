@@ -73,8 +73,9 @@ set (gcc_minimal_version 4.9)
 # PKG_CONFIG required packages
 # -----------------------------
 set (PKG_REQUIRED_LIST
-	libafb
 	python3
+	libafb
+	libafb-glue
 )
 
 # Print a helper message when every thing is finished
@@ -104,7 +105,6 @@ set(C_COMPILE_OPTIONS "-Wall" "-Wextra" "-Wconversion"  "-Wno-missing-field-init
 # ---------------------------------------------------------------------
 set(INSTALL_PREFIX $ENV{HOME}/opt)
 set(CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig ${CMAKE_INSTALL_PREFIX}/lib/pkgconfig)
-link_directories(${PROJECT_SOURCE_DIR}/../afb-libglue/build/src ${CMAKE_INSTALL_PREFIX}/lib64 ${CMAKE_INSTALL_PREFIX}/lib)
 
 # Optional location for config.xml.in
 # -----------------------------------
@@ -141,7 +141,7 @@ set(WIDGET_ENTRY_POINT lib/afb-python.so)
 
 # Optional Extra global include path
 # -----------------------------------
-set(EXTRA_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../afb-libglue/src)
+#set(EXTRA_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/../afb-libglue/src)
 
 # Optional extra libraries
 # -------------------------

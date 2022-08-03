@@ -21,7 +21,6 @@ PROJECT_TARGET_ADD(afbpyglue)
 
     # Define project Targets
     add_library(${TARGET_NAME} SHARED py-afb.c py-callbacks.c py-utils.c)
-    target_link_libraries(${TARGET_NAME} libafb-glue.so)
 
     SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
         PREFIX "_"

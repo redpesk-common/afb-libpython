@@ -1147,7 +1147,7 @@ static PyModuleDef ModuleDef = {
 // Init redpak native module
 PyObject* PyInit__afbpyglue(void) {
     int status=0;
-    fprintf (stderr, "I'm in python\n");
+    fprintf (stderr, "Entering Python module initialization function %s\n", __FUNCTION__);
     PyObject *module = PyModule_Create(&ModuleDef);
 
     status= PyType_Ready(&PyResponseType);

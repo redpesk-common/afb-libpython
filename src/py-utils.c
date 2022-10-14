@@ -471,7 +471,7 @@ PyObject * jsonToPyObj(json_object *argsJ)
         break;
     case json_type_null:
         RP_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
-        resultP=NULL;
+        resultP=Py_NewRef(Py_None);
         break;
     default:
         RP_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));

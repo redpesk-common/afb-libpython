@@ -84,7 +84,7 @@ struct PyPostHandleS {
 };
 
 typedef struct {
-    GlueHandleMagicsE magic;
+    AfbMagicTagE magic;
     int usage;
     union {
         struct PyBinderHandleS binder;
@@ -98,7 +98,7 @@ typedef struct {
 } GlueHandleT;
 
 typedef struct  {
-    GlueHandleMagicsE magic;
+    AfbMagicTagE magic;
     GlueHandleT *glue;
     GlueAsyncCtxT async;
 } GlueCallHandleT;

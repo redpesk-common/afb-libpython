@@ -1,0 +1,16 @@
+#!/bin/bash -x 
+
+REPOS_DIR="$HOME/Documents/Dev/repos"
+
+GDB_CMD="$PWD/gdb-init-cmds"
+
+if [[ "$1" == "debug" ]]; then
+    EXTRA="gdb -x $GDB_CMD --args "
+fi
+
+source $REPOS_DIR/vrubiolo/dev-env/redpesk-marine/from-src-host/bindings.env
+
+# Library now under site-packages
+#export PYTHONPATH=$PREFIX/afb-python-binder/lib
+
+$EXTRA python3 simple-api.py

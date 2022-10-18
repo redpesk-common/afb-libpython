@@ -54,7 +54,6 @@ demoApi = {
     'verbose' : 9,
     'export'  : 'public',
     'verbs'   : demoVerbs,
-    'alias'  : ['/devtools:/usr/share/afb-ui-devtools/binder'],
 }
 
 # define and instantiate libafb-binder
@@ -62,7 +61,6 @@ demoOpts = {
     'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
-    'roothttp': './conf.d/project/htdocs',
     'rootdir' : '.',
 }
 

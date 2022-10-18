@@ -139,7 +139,10 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     }
 
     PyObject *resultP= PyObject_Call ((PyObject*)vcbData->callback, argsP, NULL);
-    if (!resultP) goto OnErrorExit;
+    if (!resultP) {
+        errorMsg = "error during verb callback function call";
+        goto OnErrorExit;
+    }
     Py_DECREF(argsP);
 
     if (resultP) {

@@ -367,6 +367,43 @@ Notes:
     status=libafb.loopstart(binder, startTestCB, handle)
 ```
 
+## Error management
+
+In general, in case of an error, the infrastructure will retrieve and display
+the underlying Python error like the following syntax issue:
+```
+$ python3 demo.py
+File "/home/michel/demo.py", line 24
+    print "Hello!"
+    ^^^^^^^^^^^^^^
+SyntaxError: Missing parentheses in call to 'print'. Did you mean print(...)?
+```
+
+It is possible however that for certain specific errors, the library cannot
+retrieve the actual underlying Python error (this looks like a limitation with
+the `PyErr_Fetch()` routine).
+
+In this case, a more generic message is displayed:
+```
+$ python3 demo.py
+Entering Python module initialization function PyInit__afbpyglue
+NOTICE: Entering binder mainloop
+NOTICE: Entering main loop for demo binder
+WARNING: [REQ/API cloud-pub] verb=[test] python={ "message": "error during verb callback function call", 
+"source": "\/home\/michel\/demo.py", "line": 25, "name": "cp_test_cb", 
+"info": "unspecified Python error (likely NameError). Check the statement scope." } 
+[/buildroot/afb-libpython/src/py-callbacks.c:190,GlueApiVerbCb]
+```
+
+This situation can happen for instance in a callback, when referencing a global
+variable which was not actually defined in the outermost/global scope.  Even
+though the error message is generic, the actual source code file, function name
+and line number which are reported do correctly point at the problematic place
+in the source code.
+
+It might also be that running the code in the normal Python interpreter can
+yield more information (this might not always be possible though).
+
 ## Miscellaneous APIs/utilities
 
 * `libafb.clientinfo(rqt)`: returns client session info.

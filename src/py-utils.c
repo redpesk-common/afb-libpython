@@ -331,7 +331,18 @@ json_object *PyJsonDbg(const char *message)
 
     PyObject *typeP, *valueP, *tracebackP;
     PyErr_Fetch(&typeP, &valueP, &tracebackP);
-    if (valueP) info= PyUnicode_AsUTF8(valueP);
+    if (valueP) {
+        info= PyUnicode_AsUTF8(valueP);
+        if (!info) {
+            // certain Python errors trigger NameError exceptions in the
+            // interpreter but are not reported via valueP. We thus mention this
+            // here to hint the user as what to do.
+            // This is the case with references to a global from function scope
+            // w/o having declared it in the global scope
+            info = "unspecified Python error (likely NameError). Check the statement scope.";
+        }
+    }
+
     if (tracebackP) {
         PyTracebackObject* traceback = (PyTracebackObject*)tracebackP;
         linenum= traceback->tb_lineno;
@@ -400,8 +411,13 @@ json_object *pyObjToJson(PyObject* objP)
     else if (PyCallable_Check(objP)) {
             const char *funcname;
             PyObject *funcnameP= PyDict_GetItemString(objP, "__name__");
-            if (funcnameP) funcname= strdup(PyUnicode_AsUTF8(funcnameP));
-            else funcname="PyCb";
+            if (funcnameP) {
+                funcname= strdup(PyUnicode_AsUTF8(funcnameP));
+            }
+            else {
+                // Note: should this be a fatal error?
+                funcname="UnknownCallbackFuncName";
+            }
             valueJ = json_object_new_string(funcname);
             json_object_set_userdata(valueJ, objP, PyFreeJsonCtx);
             Py_IncRef(objP);

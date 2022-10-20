@@ -109,6 +109,15 @@ uri='unix:@api' tag.
 
 Expose a new api with ```libafb.apiadd(demoApi)``` as in the following example.
 
+Note that the library automatically exports an `info` verb documenting the
+binding based on what was provided into each verb data structure. Attempts to
+define one will lead to an error at the library startup time like the following:
+```
+ERROR: { "uid": "cp-test", "verb": "info", "callback":
+"UnknownCallbackFuncName", "info": "ping verb, use it to test the binding is alive",
+"error": "verb already exists\/registered" }
+```
+
 ```python
 ## ping/pong test func
 def pingCB(rqt, *args):

@@ -105,7 +105,7 @@ and ldpath might also be added.
 language. When an api is marked `export=public` the corresponding api/verbs are
 visible from HTTP. When `export=private` they remain visible only from internal
 calls. `export=restricted` allows to expose an API as a unix socket only, with the
-uri='unix:@api' tag.
+`uri=unix:@api-name` tag.
 
 Expose a new api with ```libafb.apiadd(demoApi)``` as in the following example.
 
@@ -120,6 +120,9 @@ ERROR: { "uid": "cp-test", "verb": "info", "callback":
 
 ```python
 ## ping/pong test func
+# The global scope declaration is mandatory here
+count = 0
+
 def pingCB(rqt, *args):
     global count
     count += 1
@@ -152,7 +155,7 @@ myapi= libafb.apiadd(demoApi)
 `afb-libpython` also allows to import an existing API from a different binder
 context into the current binder.
 
-In the following example, the 'demo-remote' API is imported from a remote binder
+In the following example, the `demo-remote` API is imported from a remote binder
 running on host `remote_host` on port `21212` over TCP into the current binder.
 It is subsequently made public under its original name, `demo-remote`.
 
@@ -165,14 +168,15 @@ imported_demo_api = {
 ```
 
 This example imports the same API from the same location but marks it as
-protected. It is thus made available over a Unix socket only, under a newly
+`restricted`. It is thus made available over a Unix socket only, under a newly
 defined name, `demo-remote-over-unix`. Note that it is an error to mark an API
-as `protected` and not provide a new URI to define its exported name.
+as `restricted` and not provide a new URI to define its exported name.
 
 ```python
 imported_demo_api = {
     'uid'    : 'py-demo-import-api',
-    'export' : 'public',
+    'export' : 'restricted',
+    'uri'    : 'unix:@demo-remote-over-unix',
     'uri'    : 'tcp:remote_host:21212/demo-remote',
 }
 ```

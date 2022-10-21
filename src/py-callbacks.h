@@ -33,7 +33,6 @@
 #include "py-utils.h"
 
 #include <glue-afb.h>
-#include <glue-utils.h>
 
 void GlueEventCb(void *userdata, const char *event_name,	unsigned nparams, afb_data_x4_t const params[],	afb_api_t api);
 void GlueApiEventCb(void *userdata, const char *event_name,	unsigned nparams, afb_data_x4_t const params[],	afb_api_t api);

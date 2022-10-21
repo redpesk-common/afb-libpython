@@ -38,7 +38,6 @@
 #include "tupleobject.h"
 
 #include <glue-afb.h>
-#include <glue-utils.h>
 
 
 // global afbMain glue

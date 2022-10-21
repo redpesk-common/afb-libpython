@@ -30,7 +30,6 @@
 #include <pthread.h>
 
 #include <glue-afb.h>
-#include <glue-utils.h>
 
 #include "py-afb.h"
 #include "py-utils.h"

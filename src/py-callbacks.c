@@ -30,7 +30,6 @@
 #include <rp-utils/rp-jsonc.h>
 
 #include <glue-afb.h>
-#include <glue-utils.h>
 
 #include "longobject.h"
 #include "py-afb.h"

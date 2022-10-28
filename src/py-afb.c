@@ -37,8 +37,6 @@
 #include "py-callbacks.h"
 #include "tupleobject.h"
 
-#include <glue-afb.h>
-
 
 // global afbMain glue
 GlueHandleT *afbMain=NULL;

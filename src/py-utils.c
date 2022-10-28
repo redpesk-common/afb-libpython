@@ -29,8 +29,6 @@
 #include <rp-utils/rp-jsonc.h>
 #include <pthread.h>
 
-#include <glue-afb.h>
-
 #include "py-afb.h"
 #include "py-utils.h"
 

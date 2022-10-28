@@ -74,9 +74,9 @@ set (gcc_minimal_version 4.9)
 # -----------------------------
 set (PKG_REQUIRED_LIST
 	python3
-	libafb
-	libafb-glue
 	librp-utils
+	libafb
+	libafb-binder
 )
 
 # Print a helper message when every thing is finished

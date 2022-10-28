@@ -29,8 +29,6 @@
 #include <assert.h>
 #include <rp-utils/rp-jsonc.h>
 
-#include <glue-afb.h>
-
 #include "longobject.h"
 #include "py-afb.h"
 #include "py-utils.h"

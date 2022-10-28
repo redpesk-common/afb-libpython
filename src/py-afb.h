@@ -23,9 +23,9 @@
 #pragma once
 #include <semaphore.h>
 
-#include <rp-utils/rp-verbose.h>
 #include <json-c/json.h>
 #include <afb-binder.h>
+#include <libafb/misc/afb-verbose.h>
 
 #define GLUE_AFB_UID "#afb#"
 #define SUBCALL_MAX_RPLY 8

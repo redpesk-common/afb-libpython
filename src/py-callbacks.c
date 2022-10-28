@@ -74,7 +74,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
     return;
 
 OnErrorExit:
-    RP_ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
+    LIBAFB_ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
 }
 
 void GlueFreeCapculeCb(PyObject *capculeP) {

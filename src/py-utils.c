@@ -203,7 +203,7 @@ void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, con
         break;
 
     default:
-        rp_vverbose(level, file, line, func, fmt, args);
+        afb_vverbose(level, file, line, func, fmt, args);
         break;
     }
     return;
@@ -408,7 +408,7 @@ json_object *pyObjToJson(PyObject* objP)
             if (funcnameP) Py_DecRef(funcnameP);
     }
     else {
-        RP_ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));
+        LIBAFB_ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));
         valueJ = NULL;
     }
 
@@ -467,11 +467,11 @@ PyObject * jsonToPyObj(json_object *argsJ)
         resultP= PyFloat_FromDouble(json_object_get_double(argsJ));
         break;
     case json_type_null:
-        RP_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
+        LIBAFB_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
         resultP=Py_NewRef(Py_None);
         break;
     default:
-        RP_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));
+        LIBAFB_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));
         goto OnErrorExit;
     }
     return resultP;

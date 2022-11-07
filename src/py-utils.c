@@ -348,14 +348,14 @@ json_object *pyObjToJson(PyObject* objP)
 {
     json_object *valueJ = NULL;
 
-    if (PyLong_Check(objP))
+    if (PyBool_Check(objP))
+        valueJ = json_object_new_boolean((json_bool)PyLong_AsLong(objP));
+
+    else if (PyLong_Check(objP))
         valueJ = json_object_new_int ((int)PyLong_AsLong(objP));
 
     else if (PyFloat_Check(objP))
         valueJ = json_object_new_double(PyFloat_AsDouble(objP));
-
-    else if (PyBool_Check(objP))
-        valueJ = json_object_new_boolean((json_bool)PyLong_AsLong(objP));
 
     else if (PyDict_Check(objP)) {
         valueJ = json_object_new_object();

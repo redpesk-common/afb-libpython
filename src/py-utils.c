@@ -213,6 +213,7 @@ void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*fu
     char const *info=NULL, *filename=NULL;
     int linenum=-1;
     va_list args;
+    PyCodeObject *code = NULL;
 
     //PyErr_Print();
     PyObject *typeP, *valueP=NULL, *tracebackP;
@@ -221,11 +222,17 @@ void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*fu
     if (tracebackP) {
         PyTracebackObject* traceback = (PyTracebackObject*)tracebackP;
         linenum= traceback->tb_lineno;
+#if PY_VERSION_HEX >= 0x030a0000
+        code = PyFrame_GetCode(traceback->tb_frame);
+        filename= PyUnicode_AsUTF8(code->co_filename);
+#else
         filename= PyUnicode_AsUTF8(traceback->tb_frame->f_code->co_filename);
+#endif
         if (filename) funcname=filename;
     }
 
     GlueVerbose(handle, level, info, linenum, funcname, format, args);
+    Py_XDECREF(code);
 }
 
 // reference: https://bbs.archlinux.org/viewtopic.php?id=31087
@@ -234,16 +241,28 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
     char const* filename=NULL;
     char const* funcname=NULL;
     int linenum=0;
+    PyCodeObject *code = NULL;
 
     if (level > AFB_SYSLOG_LEVEL_NOTICE) {
         // retreive debug info looping on frame would pop Python calling trace
         PyThreadState *ts= PyThreadState_Get();
+#if PY_VERSION_HEX >= 0x030a0000
+        PyFrameObject *frame= PyThreadState_GetFrame(ts);
+        if (frame != 0)
+        {
+            code = PyFrame_GetCode(frame);
+            filename = _PyUnicode_AsString(code->co_filename);
+            linenum  = PyFrame_GetLineNumber(frame);
+            funcname = _PyUnicode_AsString(code->co_name);
+            Py_DECREF(frame);
+#else
         PyFrameObject *frame= ts->frame;
         if (frame != 0)
         {
             filename = _PyUnicode_AsString(frame->f_code->co_filename);
             linenum  = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
             funcname = _PyUnicode_AsString(frame->f_code->co_name);
+#endif
         }
     }
 
@@ -309,11 +328,13 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
     } else {
         GlueVerbose(handle, level, filename, linenum, funcname, format);
     }
+    Py_XDECREF(code);
     return;
 
 OnErrorExit:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
+    Py_XDECREF(code);
 }
 
 void PyFreeJsonCtx (json_object *configJ, void *userdata) {
@@ -328,6 +349,7 @@ json_object *PyJsonDbg(const char *message)
     char const* funcname=NULL;
     char const* info=NULL;
     int linenum=0;
+    PyCodeObject *code = NULL;
 
     PyObject *typeP, *valueP, *tracebackP;
     PyErr_Fetch(&typeP, &valueP, &tracebackP);
@@ -346,11 +368,18 @@ json_object *PyJsonDbg(const char *message)
     if (tracebackP) {
         PyTracebackObject* traceback = (PyTracebackObject*)tracebackP;
         linenum= traceback->tb_lineno;
+#if PY_VERSION_HEX >= 0x030a0000
+        code = PyFrame_GetCode(traceback->tb_frame);
+        filename= PyUnicode_AsUTF8(code->co_filename);
+        funcname= PyUnicode_AsUTF8(code->co_name);
+#else
         filename= PyUnicode_AsUTF8(traceback->tb_frame->f_code->co_filename);
         funcname= PyUnicode_AsUTF8(traceback->tb_frame->f_code->co_name);
+#endif
     }
 
     rp_jsonc_pack(&errorJ, "{ss* ss* si* ss* ss*}", "message", message, "source", filename, "line", linenum, "name", funcname, "info", info);
+    Py_XDECREF(code);
     return (errorJ);
 }
 
@@ -484,7 +513,12 @@ PyObject * jsonToPyObj(json_object *argsJ)
         break;
     case json_type_null:
         LIBAFB_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
+#if PY_VERSION_HEX >= 0x030a0000
         resultP=Py_NewRef(Py_None);
+#else
+        resultP=Py_None;
+        Py_INCREF(resultP);
+#endif
         break;
     default:
         LIBAFB_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));

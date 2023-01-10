@@ -525,10 +525,6 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt)
 {
     assert(afbRqt);
 
-    // retreive interpreteur from API
-    GlueHandleT *Glue = afb_api_get_userdata(afb_req_get_api(afbRqt));
-    assert(Glue->magic == AFB_API_MAGIC_TAG);
-
     GlueHandleT *glue = (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
     glue->magic = AFB_RQT_MAGIC_TAG;
     glue->rqt.afb = afbRqt;

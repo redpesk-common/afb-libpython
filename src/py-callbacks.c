@@ -228,6 +228,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
         break;
 
     default:
+        state="unknown";
         break;
     }
 

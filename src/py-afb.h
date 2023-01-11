@@ -24,7 +24,7 @@
 #include <semaphore.h>
 
 #include <json-c/json.h>
-#include <afb-binder.h>
+#include <libafb-binder.h>
 #include <libafb/misc/afb-verbose.h>
 
 #define GLUE_AFB_UID "#afb#"

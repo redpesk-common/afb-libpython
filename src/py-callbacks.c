@@ -438,10 +438,10 @@ void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_
     GluePcallFunc (glue, &glue->event.async, label, 0, nparams, params);
 }
 
-void GlueTimerCb (afb_timer_x4_t timer, void *userdata, int decount) {
+void GlueTimerCb (afb_timer_x4_t timer, void *userdata, unsigned decount) {
    GlueHandleT *glue= (GlueHandleT*) userdata;
    assert (glue->magic == AFB_TIMER_MAGIC_TAG);
-   GluePcallFunc (glue, &glue->timer.async, NULL, decount, 0, NULL);
+   GluePcallFunc (glue, &glue->timer.async, NULL, (int)decount, 0, NULL);
 }
 
 void GlueJobPostCb (int signum, void *userdata) {

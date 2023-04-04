@@ -68,14 +68,14 @@ loaVerbs = [
 ]
 
 # define permissions
-loaAlcs = [
-    ['anonymous'      , 'loa', 0],
-    ['authorized'     , 'loa', 1],
-    ['perm-1'         , 'key', 'permission-1'],
-    ['perm-2'         , 'key', 'permission-2'],
-    ['login-and-roles', 'and', ['perm-2', 'perm-1']],
-    ['login-or-roles' , 'or' , ['authorized', 'perm-1']],
-]
+loaAlcs = {
+    'anonymous'      : { 'LOA': 0 },
+    'authorized'     : { 'LOA': 1 },
+    'perm-1'         : 'permission-1',
+    'perm-2'         : 'permission-2',
+    'login-and-roles': [ '#perm-2', '#perm-1' ],
+    'login-or-roles' : { 'or': ['#authorized', '#perm-1'] },
+}
 
 # define and instantiate API
 loaApi = {

@@ -94,7 +94,6 @@ loaOpts = {
     'uid'     : 'py-binder',
     'port'    : 1234,
     'verbose' : 9,
-    'roothttp': './conf.d/project/htdocs',
     'rootdir' : '.',
     'acls'    : loaAlcs,
 }

@@ -175,7 +175,14 @@ OnErrorExit:
     Py_RETURN_NONE;
 }
 
-static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
+typedef enum {
+	addApiAdd,
+	addApiImport,
+	addApiCreate
+}
+	addApiHow;
+
+static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
 {
     const char *errorMsg = "syntax: apiadd (config)";
 
@@ -194,9 +201,13 @@ static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
     }
 
-    const char *afbApiUri = NULL;
-    rp_jsonc_unpack(configJ, "{s?s}", "uri", &afbApiUri);
-    if (afbApiUri)
+    if (how == addApiAdd) {
+        const char *afbApiUri = NULL;
+        rp_jsonc_unpack(configJ, "{s?s}", "uri", &afbApiUri);
+        how = afbApiUri ? addApiImport : addApiCreate;
+    }
+
+    if (how == addApiImport)
     {
         // imported shadow api
         errorMsg = AfbApiImport(afbMain->binder.afb, configJ);
@@ -227,6 +238,21 @@ OnErrorExit:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
     Py_RETURN_NONE;
+}
+
+static PyObject *GlueApiAdd(PyObject *self, PyObject *argsP)
+{
+	return addApi(self, argsP, addApiAdd);
+}
+
+static PyObject *GlueApiImport(PyObject *self, PyObject *argsP)
+{
+	return addApi(self, argsP, addApiImport);
+}
+
+static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
+{
+	return addApi(self, argsP, addApiCreate);
 }
 
 // this routine execute within mainloop context when binder is ready to go
@@ -1111,7 +1137,9 @@ static PyMethodDef MethodsDef[] = {
     {"ping"          , GluePingTest         , METH_VARARGS, "Check afb-libpython is loaded"},
     {"binder"        , GlueBinderConf       , METH_VARARGS, "Configure and create afbMain glue"},
     {"config"        , GlueGetConfig        , METH_VARARGS, "Return glue handle full/partial config"},
-    {"apiadd"        , GlueApiCreate        , METH_VARARGS, "Add a new API to the binder"},
+    {"apiadd"        , GlueApiAdd           , METH_VARARGS, "Add a new API to the binder"},
+    {"apiimport"     , GlueApiImport        , METH_VARARGS, "Import a new API to the binder"},
+    {"apicreate"     , GlueApiCreate        , METH_VARARGS, "Create a new API to the binder"},
     {"loopstart"     , GlueLoopStart        , METH_VARARGS, "Activate mainloop and exec startup callback"},
     {"reply"         , GlueReply            , METH_VARARGS, "Explicit response tp afb request"},
     {"binding"       , GlueBindingLoad      , METH_VARARGS, "Load binding an expose corresponding api/verbs"},

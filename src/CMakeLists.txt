@@ -20,12 +20,10 @@ PROJECT_TARGET_ADD(afbpyglue)
     set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 
     # Define project Targets
-    add_library(${TARGET_NAME} SHARED py-afb.c py-callbacks.c py-utils.c)
-    target_link_libraries( ${TARGET_NAME} pthread )
+    Python3_add_library(${TARGET_NAME} MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
 
     SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
         PREFIX "_"
-        OUTPUT_NAME ${TARGET_NAME}.${Python3_SOABI}
 	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so
     )
 

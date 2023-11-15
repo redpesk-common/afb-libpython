@@ -172,7 +172,7 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
 OnErrorExit:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 typedef enum {
@@ -237,7 +237,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject *GlueApiAdd(PyObject *self, PyObject *argsP)
@@ -292,7 +292,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueGetConfig(PyObject *self, PyObject *argsP)
@@ -350,7 +350,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueReply(PyObject *self, PyObject *argsP)
@@ -422,7 +422,7 @@ static PyObject* GlueBindingLoad(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
@@ -486,7 +486,7 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
@@ -565,7 +565,7 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
@@ -602,7 +602,7 @@ static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtSubscribe(PyObject *self, PyObject *argsP)
@@ -629,7 +629,7 @@ static PyObject* GlueEvtSubscribe(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
@@ -656,7 +656,7 @@ static PyObject* GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
@@ -687,7 +687,7 @@ static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueVerbAdd(PyObject *self, PyObject *argsP)
@@ -714,7 +714,7 @@ static PyObject* GlueVerbAdd(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueSetLoa(PyObject *self, PyObject *argsP)
@@ -740,7 +740,7 @@ static PyObject* GlueSetLoa(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueTimerAddref(PyObject *self, PyObject *argsP) {
@@ -759,7 +759,7 @@ static PyObject* GlueTimerAddref(PyObject *self, PyObject *argsP) {
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueTimerUnref(PyObject *self, PyObject *argsP) {
@@ -776,7 +776,7 @@ static PyObject* GlueTimerUnref(PyObject *self, PyObject *argsP) {
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
@@ -829,7 +829,7 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueEvtDelete(PyObject *self, PyObject *argsP)
@@ -857,7 +857,7 @@ static PyObject* GlueEvtDelete(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
@@ -910,7 +910,7 @@ static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueJobcancel(PyObject *self, PyObject *argsP)
@@ -929,7 +929,7 @@ static PyObject* GlueJobcancel(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
@@ -981,7 +981,7 @@ OnErrorExit:
         if (handle->async.userdataP) Py_DecRef(handle->async.userdataP);
         free (handle);
     }
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
@@ -1033,7 +1033,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     if (handle)GlueFreeHandleCb(handle);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueJobKill(PyObject *self, PyObject *argsP)
@@ -1059,7 +1059,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(glue, errorMsg);
 OnErrorExit0:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueExit(PyObject *self, PyObject *argsP)
@@ -1079,7 +1079,7 @@ static PyObject* GlueExit(PyObject *self, PyObject *argsP)
 OnErrorExit:
     GLUE_DBG_ERROR(glue, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject* GlueClientInfo(PyObject *self, PyObject *argsP)
@@ -1117,7 +1117,7 @@ OnErrorExit:
     GLUE_DBG_ERROR(glue, errorMsg);
 OnErrorExit0:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
-    Py_RETURN_NONE;
+    return NULL;
 }
 
 static PyObject *GluePingTest(PyObject *self, PyObject *argsP)

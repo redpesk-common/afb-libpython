@@ -34,43 +34,21 @@
 
 #include <semaphore.h>
 
-static pthread_once_t onceKey= PTHREAD_ONCE_INIT;
+static pthread_once_t onceKey = PTHREAD_ONCE_INIT;
 static pthread_key_t dataKey;
-
-typedef struct {
-    void* magic;
-    PyThreadState *pyInterp;
-    void *ctx;
-} PyThreadUserDataT;
+static PyThreadState *main_py;
 
 static void FreePrivateData(void *ctx) {
-    PyThreadUserDataT *data= (PyThreadUserDataT*)ctx;
-    assert (data && data->magic==GetPrivateData);
-    data->magic=NULL;
-    Py_EndInterpreter(data->pyInterp);
-    free (data);
+    PyThreadState *py = ctx;
+    Py_EndInterpreter(py);
 }
 
-static void NewPrivateData (void) {
+static void NewPrivateData(void) {
     pthread_key_create(&dataKey, FreePrivateData);
 }
 
-PyThreadState *GetPrivateData(void) {
-    // get current interpretor from poisix thread private data
-    PyThreadUserDataT *tPrivate = pthread_getspecific(dataKey);
-    if (!tPrivate) {
-        tPrivate= calloc (1, sizeof(PyThreadUserDataT));
-        tPrivate->magic= (void*)GetPrivateData;
-        tPrivate->pyInterp= Py_NewInterpreter();
-        pthread_setspecific(dataKey, tPrivate);
-    }
-
-    assert (tPrivate && tPrivate->magic == GetPrivateData);
-    return tPrivate->pyInterp;
-}
-
 // initialise per thread user data key
-int InitPrivateData (GlueHandleT*glue) {
+int InitPrivateData(GlueHandleT *glue) {
 #if PY_MINOR_VERSION < 7
     PyEval_InitThreads(); // from 3.7 this is useless
 #endif
@@ -79,8 +57,29 @@ int InitPrivateData (GlueHandleT*glue) {
     return 0;
 }
 
+void PyThreadSave() {
+    if (!main_py)
+        main_py = PyThreadState_Get();
+    PyEval_SaveThread();
+}
+
+void PyThreadRestore() {
+    PyThreadState *current_py = pthread_getspecific(dataKey);
+
+    if (current_py == NULL) {
+        if (!main_py)
+            main_py = PyThreadState_Get(); // ALERT should not happen
+        else
+            PyEval_RestoreThread(main_py);
+        current_py = Py_NewInterpreter();
+        pthread_setspecific(dataKey, current_py);
+        PyEval_SaveThread();
+    }
+    PyEval_RestoreThread(current_py);
+}
+
 // retreive API from py handle
-afb_api_t GlueGetApi(GlueHandleT*glue) {
+afb_api_t GlueGetApi(GlueHandleT *glue) {
    afb_api_t afbApi;
     switch (glue->magic) {
         case AFB_API_MAGIC_TAG:
@@ -574,7 +573,9 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt)
 int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply)
 {
     if (glue->rqt.replied) goto OnErrorExit;
+    PyThreadSave();
     afb_req_reply(glue->rqt.afb, (int)status, (int)nbreply, reply);
+    PyThreadRestore();
     glue->rqt.replied = 1;
     return 0;
 

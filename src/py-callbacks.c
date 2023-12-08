@@ -86,6 +86,8 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     const char *errorMsg = NULL;
     int err;
 
+    PyThreadRestore();
+
     // new afb request
     GlueHandleT *glue= PyRqtNew(afbRqt);
 
@@ -114,7 +116,6 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     }
 
     // prepare calling argument list
-    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nparams+1);
     glue->usage++;
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
@@ -178,6 +179,7 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
         Py_DECREF (resultP);
     }
 
+    PyThreadSave();
     return;
 
 OnErrorExit:
@@ -187,6 +189,7 @@ OnErrorExit:
         GLUE_AFB_WARNING(glue, "verb=[%s] python=%s", afb_req_get_called_verb(afbRqt), json_object_get_string(errorJ));
         afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
         GlueAfbReply(glue, -1, 1, &reply);
+        PyThreadSave();
     }
 }
 
@@ -239,12 +242,13 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
 
         // effectively exec PY script code
         GLUE_AFB_NOTICE(glue,"GlueCtrlCb: state=[%s]", state);
-        PyThreadState_Swap(GetPrivateData());
+        PyThreadRestore();
         glue->usage++;
         PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb), state);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
+        PyThreadSave();
     }
     return status;
 
@@ -261,10 +265,10 @@ int GlueStartupCb(void *config, void *userdata)
     assert(glue && GlueGetApi(glue));
     int status=0;
 
+    PyThreadRestore();
     if (async->callbackP)
     {
         PyObject *argsP;
-        PyThreadState_Swap(GetPrivateData());
         argsP= PyTuple_New(2);
 
         PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
@@ -280,10 +284,12 @@ int GlueStartupCb(void *config, void *userdata)
         if (async->userdataP) Py_DECREF (async->userdataP);
         free (async);
     }
+    PyThreadSave();
     return status;
 
 OnErrorExit: {
     GLUE_AFB_WARNING(afbMain, "Mainloop killed");
+    PyThreadSave();
     return -1;
 }
 }
@@ -337,6 +343,8 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *label, int status, unsigned nreplies, afb_data_t const replies[]) {
     const char *errorMsg = "internal-error";
 
+    PyThreadRestore();
+
     // subcall was refused
     if (AFB_IS_BINDER_ERRNO(status)) {
         errorMsg= afb_error_text(status);
@@ -344,7 +352,6 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
     }
 
     // prepare calling argument list
-    PyThreadState_Swap(GetPrivateData());
     PyObject *argsP= PyTuple_New(nreplies+3);
     glue->usage++;
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
@@ -367,6 +374,7 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
         errorMsg="function-fail";
         goto OnErrorExit;
     }
+    PyThreadSave();
     return;
 
 OnErrorExit: {
@@ -379,6 +387,7 @@ OnErrorExit: {
         afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
         GlueAfbReply(glue, -1, 1, &reply);
     }
+    PyThreadSave();
   }
 }
 

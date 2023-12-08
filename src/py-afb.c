@@ -284,7 +284,9 @@ static PyObject* GlueLoopStart(PyObject *self, PyObject *argsP)
 
     // main loop only return when binder startup func return status!=0
     GLUE_AFB_NOTICE(afbMain, "Entering binder mainloop");
+    PyThreadSave();
     status = AfbBinderStart(afbMain->binder.afb, async, GlueStartupCb, glue);
+    PyThreadRestore();
 
     return PyLong_FromLong ((long)status);
 
@@ -472,14 +474,18 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
 
     switch (glue->magic) {
         case AFB_RQT_MAGIC_TAG:
+            PyThreadSave();
             afb_req_subcall (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, GlueRqtSubcallCb, (void*)handle);
+            PyThreadRestore();
             break;
         default:
             if (!GlueGetApi(glue)) {
                 errorMsg= "invalid api handle";
                 goto OnErrorExit;
             }
+            PyThreadSave();
             afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params, GlueApiSubcallCb, (void*)handle);
+            PyThreadRestore();
     }
     Py_RETURN_NONE;
 
@@ -524,12 +530,16 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
 
     switch (glue->magic) {
         case AFB_RQT_MAGIC_TAG:
+            PyThreadSave();
             err= afb_req_subcall_sync (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, &status, &nreplies, replies);
+            PyThreadRestore();
             break;
         case AFB_JOB_MAGIC_TAG:
         case AFB_API_MAGIC_TAG:
         case AFB_BINDER_MAGIC_TAG:
+            PyThreadSave();
             err= afb_api_call_sync (GlueGetApi(glue), apiname, verbname, (int)index, params, &status, &nreplies, replies);
+            PyThreadRestore();
             break;
 
         default:
@@ -591,7 +601,9 @@ static PyObject* GlueEvtPush(PyObject *self, PyObject *argsP)
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
     }
 
+    PyThreadSave();
     int status = afb_event_push(evtid, (int) index, params);
+    PyThreadRestore();
     if (status < 0)
     {
         errorMsg = "afb_event_push fail sending event";
@@ -1016,7 +1028,9 @@ static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
     handle->job.async.userdataP =PyTuple_GetItem(argsP,3);
     if (handle->job.async.userdataP != Py_None) Py_IncRef(handle->job.async.userdataP);
 
+    PyThreadSave();
     int err= afb_sched_enter(NULL, (int)timeout, GlueJobStartCb, handle);
+    PyThreadRestore();
     if (err < 0) {
         errorMsg= "afb_sched_enter (timeout?)";
         goto OnErrorExit;

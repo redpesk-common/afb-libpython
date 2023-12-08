@@ -25,6 +25,9 @@
 #include <Python.h>
 #include <json-c/json.h>
 
+void PyThreadSave(void);
+void PyThreadRestore(void);
+
 void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) ;
 void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args);
 void GlueVerbose (GlueHandleT *afbHandle, int level, const char *file, int line, const char *func, const char *fmt, ...);
@@ -43,7 +46,6 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt);
 void PyRqtAddref(GlueHandleT *pyRqt);
 void PyRqtUnref(GlueHandleT *pyRqt);
 int InitPrivateData (GlueHandleT*glue);
-PyThreadState *GetPrivateData(void);
 
 afb_api_t GlueGetApi(GlueHandleT*glue);
 int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply);

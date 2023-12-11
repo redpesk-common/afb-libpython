@@ -42,6 +42,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
         case AFB_EVT_MAGIC_TAG:
             if (handle->usage < 0) {
                 free (handle->event.pattern);
+                free (handle->event.async.uid);
                 Py_DecRef(handle->event.configP);
                 if ( handle->event.configP) Py_DecRef(handle->event.configP);
             }
@@ -58,6 +59,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             if (handle->usage < 0) {
                 Py_DecRef(handle->timer.async.callbackP);
                 if (handle->timer.async.userdataP)Py_DecRef(handle->timer.async.userdataP);
+                free (handle->timer.async.uid);
             }
             break;
 
@@ -90,6 +92,10 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
 
     // new afb request
     GlueHandleT *glue= PyRqtNew(afbRqt);
+    if (glue == NULL) {
+        errorMsg = "out of memory";
+        goto OnErrorExit;
+    }
 
     // on first call we compile configJ to boost following py api/verb calls
     AfbVcbDataT *vcbData= afb_req_get_vcbdata(afbRqt);
@@ -424,9 +430,14 @@ void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_da
 
         // create an async structure to use gluePcallFunc and extract callbackR from json userdata
         GlueAsyncCtxT *async= calloc (1, sizeof(GlueAsyncCtxT));
+	if (async == NULL) {
+            errorMsg = "out of memory";
+            goto OnErrorExit;
+        }
         async->callbackP=  json_object_get_userdata (callbackJ);
         if (!async->callbackP || !PyCallable_Check(async->callbackP)) {
             errorMsg = "(hoops) event has no callable function";
+	    free(async);
             goto OnErrorExit;
         }
         // extract Python callable from callbackJ

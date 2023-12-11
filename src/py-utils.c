@@ -559,12 +559,13 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt)
     assert(afbRqt);
 
     GlueHandleT *glue = (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
-    glue->magic = AFB_RQT_MAGIC_TAG;
-    glue->rqt.afb = afbRqt;
+    if (glue != NULL) {
+        glue->magic = AFB_RQT_MAGIC_TAG;
+        glue->rqt.afb = afbRqt;
 
-    // add py rqt handle to afb request livecycle
-    afb_req_v4_set_userdata (afbRqt, (void*)glue, PyRqtFree);
-
+        // add py rqt handle to afb request livecycle
+        afb_req_v4_set_userdata (afbRqt, (void*)glue, PyRqtFree);
+    }
     return glue;
 }
 
@@ -583,3 +584,15 @@ OnErrorExit:
     GLUE_DBG_ERROR(glue, "unique response require");
     return -1;
 }
+
+char *pyObjToStr(PyObject* objP)
+{
+    Py_ssize_t sz;
+    const char *cstr = PyUnicode_AsUTF8AndSize(objP, &sz);
+    char *str = cstr == NULL ? NULL : malloc((size_t)(++sz));
+    if (str != NULL)
+        memcpy(str, cstr, sz);
+    return str;
+}
+
+

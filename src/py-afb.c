@@ -137,13 +137,17 @@ static PyObject * GluePrintDebug(PyObject *self, PyObject *argsP)
 static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg="syntax: binder(config)";
-    if (afbMain) {
+    if (afbMain != NULL) {
         errorMsg="(hoops) binder(config) already loaded";
         goto OnErrorExit;
     }
 
     // allocate afbMain glue and parse config to jsonC
     afbMain= calloc(1, sizeof(GlueHandleT));
+    if (afbMain == NULL) {
+        errorMsg= "out of memory";
+        goto OnErrorExit;
+    }
     afbMain->magic= AFB_BINDER_MAGIC_TAG;
 
     int err= InitPrivateData(afbMain);
@@ -192,6 +196,10 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
     }
 
     GlueHandleT *glue = calloc(1, sizeof(GlueHandleT));
+    if (glue == NULL) {
+        errorMsg= "out of memory";
+        goto OnErrorExit;
+    }
     glue->magic = AFB_API_MAGIC_TAG;
 
     if (!PyArg_ParseTuple(argsP, "O", &glue->api.configP)) goto OnErrorExit;
@@ -265,6 +273,10 @@ static PyObject* GlueLoopStart(PyObject *self, PyObject *argsP)
     if (count <1 || count >3) goto OnErrorExit;
 
     GlueAsyncCtxT *async= calloc(1, sizeof(GlueAsyncCtxT));
+    if (async == NULL) {
+        errorMsg= "out of memory";
+        goto OnErrorExit;
+    }
 
     GlueHandleT *glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue || !GlueGetApi(glue)) goto OnErrorExit;
@@ -466,6 +478,10 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
     }
 
     GlueCallHandleT *handle= calloc(1,sizeof(GlueCallHandleT));
+    if (handle == NULL) {
+        errorMsg= "out of memory";
+        goto OnErrorExit;
+    }
     handle->glue= glue;
     handle->magic= AFB_CALL_MAGIC_TAG;
     handle->async.callbackP= callbackP;
@@ -683,12 +699,13 @@ static PyObject* GlueEvtNew(PyObject *self, PyObject *argsP)
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue || !GlueGetApi(glue)) goto OnErrorExit;
 
-    const char *label= PyUnicode_AsUTF8(PyTuple_GetItem(argsP,1));
+    char *label= pyObjToStr(PyTuple_GetItem(argsP,1));
     if (!label) goto OnErrorExit;
 
-    err= afb_api_new_event(GlueGetApi(glue), strdup(label), &evtid);
+    err= afb_api_new_event(GlueGetApi(glue), label, &evtid);
     if (err)
     {
+        free(label);
         errorMsg = "(hoops) afb-afb_api_new_event fail";
         goto OnErrorExit;
     }
@@ -805,6 +822,7 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     if (!apiv4) goto OnErrorExit;
 
     GlueHandleT *handle = calloc(1, sizeof(GlueHandleT));
+    if (handle == NULL) goto OnErrorExit;
     handle->magic = AFB_EVT_MAGIC_TAG;
     handle->event.apiv4= apiv4;
 
@@ -815,11 +833,13 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     errorMsg= "config={'uid':'xxx','pattern':'yyy','callback':'zzz'}";
     PyObject *uidP= PyDict_GetItemString(configP, "uid");
     if (!uidP || !PyUnicode_Check(uidP)) goto OnErrorExit;
-    handle->event.async.uid= (char*)PyUnicode_AsUTF8(uidP);
+    handle->event.async.uid= pyObjToStr(uidP);
+    if (handle->event.async.uid) goto OnErrorExit;
 
     PyObject *patternP= PyDict_GetItemString(configP, "pattern");
     if (!patternP || !PyUnicode_Check(patternP)) goto OnErrorExit;
-    handle->event.pattern= strdup(PyUnicode_AsUTF8(patternP));
+    handle->event.pattern= pyObjToStr(patternP);
+    if (handle->event.pattern) goto OnErrorExit;
 
     handle->event.async.callbackP= PyDict_GetItemString(configP, "callback");
     if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP)) goto OnErrorExit;
@@ -828,7 +848,7 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     handle->event.async.userdataP = PyTuple_GetItem(argsP,2);
     if (handle->event.async.userdataP) Py_IncRef(handle->event.async.userdataP);
 
-    errorMsg= AfbAddOneEvent(apiv4, strdup(handle->event.async.uid), handle->event.pattern, GlueEventCb, handle);
+    errorMsg= AfbAddOneEvent(apiv4, handle->event.async.uid, handle->event.pattern, GlueEventCb, handle);
     if (errorMsg) goto OnErrorExit;
 
     // return api glue
@@ -879,6 +899,7 @@ static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
     if (!glue) goto OnErrorExit;
 
     GlueHandleT *handle= (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
+    if (handle == NULL) goto OnErrorExit;
     handle->magic = AFB_TIMER_MAGIC_TAG;
     handle->timer.configP = PyTuple_GetItem(argsP,1);
     if (!PyDict_Check(handle->timer.configP)) goto OnErrorExit;
@@ -896,7 +917,7 @@ static PyObject* GlueTimerNew(PyObject *self, PyObject *argsP)
     errorMsg= "timerconfig= {'uid':'xxx', 'callback': MyCallback, 'period': timer(ms), 'count': 0-xx}";
     slotP= PyDict_GetItemString(handle->timer.configP, "uid");
     if (!slotP || !PyUnicode_Check(slotP)) goto OnErrorExit;
-    handle->timer.async.uid= (char*)PyUnicode_AsUTF8(slotP);
+    handle->timer.async.uid= pyObjToStr(slotP);
 
     handle->timer.async.callbackP= PyDict_GetItemString(handle->timer.configP, "callback");
     if (!handle->timer.async.callbackP || !PyCallable_Check(handle->timer.async.callbackP)) goto OnErrorExit;
@@ -957,6 +978,10 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
 
     // prepare handle for callback
     handle=calloc (1, sizeof(GlueCallHandleT));
+    if (handle == NULL) {
+        errorMsg="out of memory";
+        goto OnErrorExit;
+    }
     handle->magic= AFB_POST_MAGIC_TAG;
     handle->glue=glue;
 
@@ -967,7 +992,7 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
     }
     Py_IncRef(handle->async.callbackP);
     PyObject *uidP= PyDict_GetItemString(handle->async.callbackP, "__name__");
-    if (uidP) handle->async.uid= strdup(PyUnicode_AsUTF8(uidP));
+    if (uidP) handle->async.uid= pyObjToStr(uidP);
     Py_DecRef(uidP);
 
     long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,2));
@@ -1009,6 +1034,10 @@ static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
 
     // prepare handle for callback
     handle=calloc (1, sizeof(GlueHandleT));
+    if (handle == NULL) {
+        errorMsg="out of memory";
+        goto OnErrorExit;
+    }
     handle->magic= AFB_JOB_MAGIC_TAG;
     handle->job.apiv4= GlueGetApi(glue);
 
@@ -1019,7 +1048,7 @@ static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
     }
     Py_IncRef(handle->job.async.callbackP);
     PyObject *uidP= PyDict_GetItemString(handle->job.async.callbackP, "__name__");
-    if (uidP) handle->job.async.uid= strdup(PyUnicode_AsUTF8(uidP));
+    if (uidP) handle->job.async.uid= pyObjToStr(uidP);
     Py_DecRef(uidP);
 
     long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,2));
@@ -1091,7 +1120,6 @@ static PyObject* GlueExit(PyObject *self, PyObject *argsP)
     Py_RETURN_NONE;
 
 OnErrorExit:
-    GLUE_DBG_ERROR(glue, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;
 }

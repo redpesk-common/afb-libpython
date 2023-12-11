@@ -38,6 +38,7 @@ json_object *PyJsonDbg(const char *message);
 #define GLUE_AFB_ERROR(Glue,...)   GlueVerbose (Glue,AFB_SYSLOG_LEVEL_ERROR,__file__,__LINE__,__func__,__VA_ARGS__)
 #define GLUE_DBG_ERROR(Glue,...)   PyInfoDbg (Glue, AFB_SYSLOG_LEVEL_ERROR, __func__, __VA_ARGS__);
 
+char *pyObjToStr(PyObject* objP);
 json_object *pyObjToJson(PyObject* objP);
 PyObject * jsonToPyObj(json_object *argsJ);
 void PyFreeJsonCtx (json_object *configJ, void *userdata) ;

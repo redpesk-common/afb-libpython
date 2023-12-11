@@ -287,7 +287,6 @@ int GlueStartupCb(void *config, void *userdata)
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
         Py_DECREF (async->callbackP);
-        if (async->userdataP) Py_DECREF (async->userdataP);
         free (async);
     }
     PyThreadSave();

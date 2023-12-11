@@ -28,8 +28,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include <rp-utils/rp-jsonc.h>
-
 #include "longobject.h"
 #include "object.h"
 #include "py-afb.h"
@@ -210,8 +208,7 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
     }
 
     if (how == addApiAdd) {
-        const char *afbApiUri = NULL;
-        rp_jsonc_unpack(configJ, "{s?s}", "uri", &afbApiUri);
+        json_object *afbApiUri = json_object_object_get(configJ, "uri");
         how = afbApiUri ? addApiImport : addApiCreate;
     }
 

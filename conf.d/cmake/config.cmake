@@ -74,7 +74,6 @@ set (gcc_minimal_version 4.9)
 # -----------------------------
 set (PKG_REQUIRED_LIST
 	python3
-	librp-utils
 	libafb
 	libafb-binder
 )

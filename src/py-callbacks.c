@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <rp-utils/rp-jsonc.h>
 
 #include "longobject.h"
 #include "py-afb.h"
@@ -316,11 +315,10 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
     uid= PyUnicode_AsUTF8(uidP);
     if (infoP) info=PyUnicode_AsUTF8(infoP);
 
-    json_object *metaJ;
-    rp_jsonc_pack (&metaJ, "{ss ss*}"
-        ,"uid", uid
-        ,"info", info
-    );
+    json_object *metaJ = json_object_new_object();
+    json_object_object_add(metaJ, "uid", json_object_new_string(uid));
+    if (info != NULL)
+        json_object_object_add(metaJ, "info", json_object_new_string(info));
 
     // extract info from each verb
     json_object *verbsJ = json_object_new_array();
@@ -336,10 +334,14 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
         }
     }
     // info devtool require a group array
-    json_object *groupsJ, *infoJ;
-    rp_jsonc_pack(&groupsJ, "[{so}]", "verbs", verbsJ);
+    json_object *verbGroupJ = json_object_new_object();
+    json_object_object_add(verbGroupJ, "verbs", verbsJ);
+    json_object *groupsJ = json_object_new_array();
+    json_object_array_add(groupsJ, verbGroupJ);
 
-    rp_jsonc_pack(&infoJ, "{so so}", "metadata", metaJ, "groups", groupsJ);
+    json_object *infoJ = json_object_new_object();
+    json_object_object_add(infoJ, "metadata", metaJ);
+    json_object_object_add(infoJ, "groups", groupsJ);
     afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, infoJ, 0, (void *)json_object_put, infoJ);
     afb_req_reply(afbRqt, 0, 1, &reply);
     return;

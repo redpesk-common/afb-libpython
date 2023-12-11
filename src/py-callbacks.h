@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <rp-utils/rp-jsonc.h>
 
 #include "py-afb.h"
 #include "py-utils.h"

@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <rp-utils/rp-jsonc.h>
 #include <pthread.h>
 
 #include "py-afb.h"
@@ -377,7 +376,17 @@ json_object *PyJsonDbg(const char *message)
 #endif
     }
 
-    rp_jsonc_pack(&errorJ, "{ss* ss* si* ss* ss*}", "message", message, "source", filename, "line", linenum, "name", funcname, "info", info);
+    errorJ = json_object_new_object();
+    if (message != NULL)
+        json_object_object_add(errorJ, "message", json_object_new_string(message));
+    if (filename != NULL)
+        json_object_object_add(errorJ, "source", json_object_new_string(filename));
+    if (linenum != 0)
+        json_object_object_add(errorJ, "line", json_object_new_int(linenum));
+    if (funcname != NULL)
+        json_object_object_add(errorJ, "name", json_object_new_string(funcname));
+    if (info != NULL)
+        json_object_object_add(errorJ, "info", json_object_new_string(info));
     Py_XDECREF(code);
     return (errorJ);
 }

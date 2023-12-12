@@ -49,64 +49,64 @@ typedef struct {
     PyObject *userdataP;
 } GlueAsyncCtxT;
 
-struct PyBinderHandleS {
+typedef struct {
     AfbBinderHandleT *afb;
     //sem_t sem;
     PyObject *configP;
     PyThreadState *pyState;
-};
+} PyBinderHandleT;
 
-struct PyJobHandleS {
+typedef struct {
     struct afb_sched_lock *afb;
     afb_api_t  apiv4;
     long status;
     GlueAsyncCtxT async;
-};
+} PyJobHandleT;
 
-struct PyApiHandleS {
+typedef struct {
     afb_api_t  afb;
     PyObject *ctrlCb;
     PyObject *configP;
-};
+} PyApiHandleT;
 
-struct PyRqtHandleS {
+typedef struct {
     struct PyApiHandleS *api;
     int replied;
     afb_req_t afb;
-};
+} PyRqtHandleT;
 
-struct PyEventHandleS {
+typedef struct {
     afb_event_t afb;
     afb_api_t apiv4;
     char *pattern;
     PyObject *configP;
     GlueAsyncCtxT async;
-};
+} PyEventHandleT;
 
-struct PyTimerHandleS {
+typedef struct {
     afb_timer_t afb;
     afb_api_t apiv4;
     PyObject *configP;
     GlueAsyncCtxT async;
-};
+} PyTimerHandleT;
 
-struct PyPostHandleS {
+typedef struct {
     afb_api_t apiv4;
     PyObject *configP;
     GlueAsyncCtxT async;
-};
+} PyPostHandleT;
 
 typedef struct {
     GlueMagicTagE magic;
     int usage;
     union {
-        struct PyBinderHandleS binder;
-        struct PyApiHandleS api;
-        struct PyRqtHandleS rqt;
-        struct PyTimerHandleS timer;
-        struct PyEventHandleS event;
-        struct PyPostHandleS post;
-        struct PyJobHandleS job;
+        PyBinderHandleT binder;
+        PyApiHandleT api;
+        PyRqtHandleT rqt;
+        PyTimerHandleT timer;
+        PyEventHandleT event;
+        PyPostHandleT post;
+        PyJobHandleT job;
     };
 } GlueHandleT;
 

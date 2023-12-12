@@ -38,7 +38,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
     handle->usage--;
 
     switch (handle->magic) {
-        case AFB_EVT_MAGIC_TAG:
+        case GLUE_EVT_MAGIC_TAG:
             if (handle->usage < 0) {
                 free (handle->event.pattern);
                 free (handle->event.async.uid);
@@ -46,14 +46,14 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
                 if ( handle->event.configP) Py_DecRef(handle->event.configP);
             }
             break;
-        case AFB_JOB_MAGIC_TAG:
+        case GLUE_JOB_MAGIC_TAG:
             if (handle->usage < 0) {
                 Py_DecRef(handle->job.async.callbackP);
                 if (handle->job.async.userdataP) Py_DecRef(handle->job.async.userdataP);
                 free (handle->job.async.uid);
             }
             break;
-        case AFB_TIMER_MAGIC_TAG:
+        case GLUE_TIMER_MAGIC_TAG:
             afb_timer_unref (handle->timer.afb);
             if (handle->usage < 0) {
                 Py_DecRef(handle->timer.async.callbackP);
@@ -62,20 +62,21 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             }
             break;
 
-        case AFB_API_MAGIC_TAG:    // as today removing API is not supported bu libafb
-        case AFB_RQT_MAGIC_TAG:    // rqt live cycle is handle directly by libafb
-        case AFB_BINDER_MAGIC_TAG: // afbmain should never be released
+        case GLUE_API_MAGIC_TAG:    // as today removing API is not supported bu libafb
+        case GLUE_RQT_MAGIC_TAG:    // rqt live cycle is handle directly by libafb
+        case GLUE_BINDER_MAGIC_TAG: // afbmain should never be released
             handle->usage=1; // static handle
             break;
 
         default:
             goto OnErrorExit;
+            return;
     }
     if (handle->usage < 0) free (handle);
     return;
 
 OnErrorExit:
-    LIBAFB_ERROR ("try to release a protected handle type=%s", AfbMagicToString(handle->magic));
+    LIBAFB_ERROR ("try to release a protected handle");
 }
 
 void GlueFreeCapculeCb(PyObject *capculeP) {
@@ -205,7 +206,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
     int status=0;
 
     // assert userdata validity
-    assert (glue && glue->magic == AFB_API_MAGIC_TAG);
+    assert (glue && glue->magic == GLUE_API_MAGIC_TAG);
 
 
     switch (ctlid) {
@@ -305,7 +306,7 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 
     // retreive interpreteur from API
     GlueHandleT *glue = afb_api_get_userdata(apiv4);
-    assert(glue->magic == AFB_API_MAGIC_TAG);
+    assert(glue->magic == GLUE_API_MAGIC_TAG);
 
     // extract uid + info from API config
     const char  *uid, *info=NULL;
@@ -387,7 +388,7 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
 OnErrorExit: {
     const char*uid= async->uid;
     json_object *errorJ = PyJsonDbg(errorMsg);
-    if (glue->magic != AFB_RQT_MAGIC_TAG)  GLUE_AFB_WARNING(glue, "uid=%s info=%s error=%s", uid, errorMsg,  json_object_get_string(errorJ));
+    if (glue->magic != GLUE_RQT_MAGIC_TAG)  GLUE_AFB_WARNING(glue, "uid=%s info=%s error=%s", uid, errorMsg,  json_object_get_string(errorJ));
     else {
         afb_data_t reply;
         GLUE_AFB_WARNING(glue, "%s", json_object_get_string(errorJ));
@@ -401,7 +402,7 @@ OnErrorExit: {
 void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
 
     GlueHandleT *glue= (GlueHandleT*)userdata;
-    assert (glue->magic == AFB_JOB_MAGIC_TAG);
+    assert (glue->magic == GLUE_JOB_MAGIC_TAG);
 
     glue->job.afb= afbLock;
     GluePcallFunc (glue, &glue->job.async, NULL, signum, 0, NULL);
@@ -411,7 +412,7 @@ void GlueJobStartCb (int signum, void *userdata, struct afb_sched_lock *afbLock)
 void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
     const char *errorMsg;
     GlueHandleT *glue= (GlueHandleT*) afb_api_get_userdata(api);
-    assert (glue->magic == AFB_API_MAGIC_TAG);
+    assert (glue->magic == GLUE_API_MAGIC_TAG);
 
     // on first call we compile configJ to boost following py api/verb calls
     AfbVcbDataT *vcbData= userdata;
@@ -455,19 +456,19 @@ OnErrorExit:
 // user when declaring event with libafb.evthandler
 void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
     GlueHandleT *glue= (GlueHandleT*) userdata;
-    assert (glue->magic == AFB_EVT_MAGIC_TAG);
+    assert (glue->magic == GLUE_EVT_MAGIC_TAG);
     GluePcallFunc (glue, &glue->event.async, label, 0, nparams, params);
 }
 
 void GlueTimerCb (afb_timer_x4_t timer, void *userdata, unsigned decount) {
    GlueHandleT *glue= (GlueHandleT*) userdata;
-   assert (glue->magic == AFB_TIMER_MAGIC_TAG);
+   assert (glue->magic == GLUE_TIMER_MAGIC_TAG);
    GluePcallFunc (glue, &glue->timer.async, NULL, (int)decount, 0, NULL);
 }
 
 void GlueJobPostCb (int signum, void *userdata) {
     GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
-    assert (handle->magic == AFB_POST_MAGIC_TAG);
+    assert (handle->magic == GLUE_POST_MAGIC_TAG);
     if (!signum) GluePcallFunc (handle->glue, &handle->async, NULL, signum, 0, NULL);
     free (handle->async.uid);
     free (handle);
@@ -475,7 +476,7 @@ void GlueJobPostCb (int signum, void *userdata) {
 
 void GlueApiSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_api_t api) {
     GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
-    assert (handle->magic == AFB_CALL_MAGIC_TAG);
+    assert (handle->magic == GLUE_CALL_MAGIC_TAG);
     GluePcallFunc (handle->glue, &handle->async, NULL, status, nreplies, replies);
     free (handle->async.uid);
     free (handle);
@@ -483,7 +484,7 @@ void GlueApiSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t
 
 void GlueRqtSubcallCb (void *userdata, int status, unsigned nreplies, afb_data_t const replies[], afb_req_t req) {
     GlueCallHandleT *handle= (GlueCallHandleT*) userdata;
-    assert (handle->magic == AFB_CALL_MAGIC_TAG);
+    assert (handle->magic == GLUE_CALL_MAGIC_TAG);
     GluePcallFunc (handle->glue, &handle->async, NULL, status, nreplies, replies);
     free (handle->async.uid);
     free (handle);

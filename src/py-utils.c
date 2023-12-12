@@ -81,22 +81,22 @@ void PyThreadRestore() {
 afb_api_t GlueGetApi(GlueHandleT *glue) {
    afb_api_t afbApi;
     switch (glue->magic) {
-        case AFB_API_MAGIC_TAG:
+        case GLUE_API_MAGIC_TAG:
             afbApi= glue->api.afb;
             break;
-        case AFB_RQT_MAGIC_TAG:
+        case GLUE_RQT_MAGIC_TAG:
             afbApi= afb_req_get_api(glue->rqt.afb);
             break;
-        case AFB_BINDER_MAGIC_TAG:
+        case GLUE_BINDER_MAGIC_TAG:
             afbApi= AfbBinderGetApi(glue->binder.afb);
             break;
-        case AFB_JOB_MAGIC_TAG:
+        case GLUE_JOB_MAGIC_TAG:
             afbApi= glue->job.apiv4;
             break;
-        case AFB_EVT_MAGIC_TAG:
+        case GLUE_EVT_MAGIC_TAG:
             afbApi= glue->event.apiv4;
             break;
-        case AFB_TIMER_MAGIC_TAG:
+        case GLUE_TIMER_MAGIC_TAG:
             afbApi= glue->timer.apiv4;
             break;
         default:
@@ -190,13 +190,13 @@ void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, con
     va_start(args, fmt);
     switch (handle->magic)
     {
-    case AFB_API_MAGIC_TAG:
-    case AFB_EVT_MAGIC_TAG:
-    case AFB_JOB_MAGIC_TAG:
+    case GLUE_API_MAGIC_TAG:
+    case GLUE_EVT_MAGIC_TAG:
+    case GLUE_JOB_MAGIC_TAG:
         afb_api_vverbose(GlueGetApi(handle), level, file, line, func, fmt, args);
         break;
 
-    case AFB_RQT_MAGIC_TAG:
+    case GLUE_RQT_MAGIC_TAG:
         afb_req_vverbose(handle->rqt.afb, level, file, line, func, fmt, args);
         break;
 
@@ -541,7 +541,7 @@ OnErrorExit:
 static void PyRqtFree(void *userdata)
 {
     GlueHandleT *glue= (GlueHandleT*)userdata;
-    assert (glue && (glue->magic == AFB_RQT_MAGIC_TAG));
+    assert (glue && (glue->magic == GLUE_RQT_MAGIC_TAG));
 
     free(glue);
     return;
@@ -549,14 +549,14 @@ static void PyRqtFree(void *userdata)
 
 // add a reference on Glue handle
 void PyRqtAddref(GlueHandleT *glue) {
-    if (glue->magic == AFB_RQT_MAGIC_TAG) {
+    if (glue->magic == GLUE_RQT_MAGIC_TAG) {
         afb_req_addref (glue->rqt.afb);
     }
 }
 
 // add a reference on Glue handle
 void PyRqtUnref(GlueHandleT *glue) {
-    if (glue->magic == AFB_RQT_MAGIC_TAG) {
+    if (glue->magic == GLUE_RQT_MAGIC_TAG) {
         afb_req_unref (glue->rqt.afb);
     }
 
@@ -569,7 +569,7 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt)
 
     GlueHandleT *glue = (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
     if (glue != NULL) {
-        glue->magic = AFB_RQT_MAGIC_TAG;
+        glue->magic = GLUE_RQT_MAGIC_TAG;
         glue->rqt.afb = afbRqt;
 
         // add py rqt handle to afb request livecycle

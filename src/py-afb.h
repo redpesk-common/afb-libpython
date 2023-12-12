@@ -30,6 +30,19 @@
 #define GLUE_AFB_UID "#afb#"
 #define SUBCALL_MAX_RPLY 8
 
+typedef enum {
+    GLUE_UNKNOWN_MAGIC_TAG=0, /**< Default unset object identity */
+    GLUE_BINDER_MAGIC_TAG,    /**< Identify BINDER objects */
+    GLUE_API_MAGIC_TAG,       /**< Identify API objects */
+    GLUE_RQT_MAGIC_TAG,       /**< Identify REQUEST objects */
+    GLUE_EVT_MAGIC_TAG,       /**< Identify EVENT objects */
+    GLUE_TIMER_MAGIC_TAG,     /**< Identify TIMER objects */
+    GLUE_JOB_MAGIC_TAG,       /**< Identify JOB objects */
+    GLUE_POST_MAGIC_TAG,      /**< Identify POSTED JOB objects */
+    GLUE_CALL_MAGIC_TAG,      /**< Identify ASYNCHRONOUS CALL objects */
+}
+    GlueMagicTagE;
+
 typedef struct {
     char *uid;
     PyObject *callbackP;
@@ -84,7 +97,7 @@ struct PyPostHandleS {
 };
 
 typedef struct {
-    AfbMagicTagE magic;
+    GlueMagicTagE magic;
     int usage;
     union {
         struct PyBinderHandleS binder;
@@ -98,7 +111,7 @@ typedef struct {
 } GlueHandleT;
 
 typedef struct  {
-    AfbMagicTagE magic;
+    GlueMagicTagE magic;
     GlueHandleT *glue;
     GlueAsyncCtxT async;
 } GlueCallHandleT;

@@ -310,7 +310,7 @@ deciding if the test is successfully or not.
 
 loopstart is started with `libafb.loopstart(binder, ['xxx', handle])`, where `xxx' is
 an optional startup function that controls loopstart execution. There are two ways
-to control the loopstart: standard and jobstart modes.
+to control the loopstart: standard and jobrun modes.
 
 ### standard mode
 
@@ -330,23 +330,23 @@ else:
     libafb.notice(binder, "OnSuccess loopstart Exit")
 ```
 
-### jobstart mode
+### jobrun mode
 
 This uses a `schedwait` lock to control the main loop from the asynchronous events.
 This later case is mandatory when we have to start the loopstart to listen
 to events, but still need to exit to run a new set of tests.
 
 In the following example:
-* `jobstartCB` callback starts an event handler and passes the lock as an event context
+* `jobrunCB` callback starts an event handler and passes the lock as an event context
 * the event handler counts the number of events and after 5 events releases the lock.
 
 Notes:
 
-* `libafb.jobstart` does not return before the lock is released. As for events, it
+* `libafb.jobrun` does not return before the lock is released. As for events, it
   is the developer responsibility to either carry the lock in a context or to
   store it within a shared space, to order the unlock function to access it.
 
-* it is possible to serialize `libafb.jobstart` in order to build an asynchronous
+* it is possible to serialize `libafb.jobrun` in order to build an asynchronous
   cascade of asynchronous tests.
 
 ```python
@@ -357,9 +357,9 @@ Notes:
         evtCount += 1
         if evtCount == 5:
             libafb.notice (evt, "*** EventReceiveCB releasing lock ***");
-            libafb.jobkill (evt, lock, evtCount)
+            libafb.jobleave (evt, lock, evtCount)
 
-    def jobstartCB(api, lock, context):
+    def jobrunCB(api, lock, context):
         libafb.notice (api, "Schedlock timer-event handler register")
         libafb.evthandler(api, {'uid':'timer-event', 'pattern':'helloworld-event/timerCount','callback':EventReceiveCB}, lock)
         return 0
@@ -371,7 +371,7 @@ Notes:
         libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
 
         libafb.notice (binder, "waiting (%ds) for test to finish", timeout)
-        status= libafb.jobstart(binder, timeout, jobstartCB, None)
+        status= libafb.jobrun(binder, timeout, jobrunCB, None)
 
         libafb.notice (binder, "test done status=%d", status)
         return(status) # negative status forces loopstart exit

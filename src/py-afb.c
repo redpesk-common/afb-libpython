@@ -943,10 +943,10 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject* GlueJobcancel(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobAbort(PyObject *self, PyObject *argsP)
 {
     long count = PyTuple_GET_SIZE(argsP);
-    const char *errorMsg = "syntax: jobcancel(jobid)";
+    const char *errorMsg = "syntax: jobabort(jobid)";
     if (count != 1) goto OnErrorExit;
 
     long jobid= PyLong_AsLong(PyTuple_GetItem(argsP,0));
@@ -1018,9 +1018,9 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobRun(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "jobstart(handle, callback, timeout, [userdata])";
+    const char *errorMsg = "jobrun(handle, callback, timeout, [userdata])";
     GlueHandleT *handle=NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -1055,7 +1055,7 @@ static PyObject* GlueJobStart(PyObject *self, PyObject *argsP)
     if (handle->job.async.userdataP != Py_None) Py_IncRef(handle->job.async.userdataP);
 
     PyThreadSave();
-    int err= afb_sched_enter(NULL, (int)timeout, GlueJobStartCb, handle);
+    int err= afb_sched_enter(NULL, (int)timeout, GlueJobRunCb, handle);
     PyThreadRestore();
     if (err < 0) {
         errorMsg= "afb_sched_enter (timeout?)";
@@ -1076,10 +1076,10 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject* GlueJobKill(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobLeave(PyObject *self, PyObject *argsP)
 {
     int err;
-    const char *errorMsg = "syntax: jobkill(job, status)";
+    const char *errorMsg = "syntax: jobleave(job, status)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count !=  2) goto OnErrorExit0;
 
@@ -1195,10 +1195,10 @@ static PyMethodDef MethodsDef[] = {
     {"timeraddref"   , GlueTimerAddref      , METH_VARARGS, "Addref to existing timer"},
     {"timernew"      , GlueTimerNew         , METH_VARARGS, "Create a new timer"},
     {"setloa"        , GlueSetLoa           , METH_VARARGS, "Set LOA (LevelOfAssurance)"},
-    {"jobstart"      , GlueJobStart         , METH_VARARGS, "Register a mainloop waiting lock"},
-    {"jobkill"       , GlueJobKill          , METH_VARARGS, "Unlock jobstart"},
+    {"jobrun"        , GlueJobRun           , METH_VARARGS, "Register a mainloop waiting lock"},
+    {"jobleave"      , GlueJobLeave         , METH_VARARGS, "Unlock jobrun"},
     {"jobpost"       , GlueJobPost          , METH_VARARGS, "Post a job after timeout(ms)"},
-    {"jobcancel"     , GlueJobcancel        , METH_VARARGS, "Cancel a jobpost timer"},
+    {"jobabort"      , GlueJobAbort         , METH_VARARGS, "Cancel a jobpost timer"},
     {"clientinfo"    , GlueClientInfo       , METH_VARARGS, "Return seesion info about client"},
     {"exit"          , GlueExit             , METH_VARARGS, "Exit binder with status"},
 

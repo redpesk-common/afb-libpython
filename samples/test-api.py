@@ -36,7 +36,7 @@ def EvtReceiveCB(evt, name, ctx, *data):
     evtCount += 1
     if evtCount >= ctx['count']:
         libafb.notice (evt, "*** EvtReceiveCB releasing job ***")
-        libafb.jobkill (ctx['job'], evtCount) # jobkill(job, status)
+        libafb.jobleave (ctx['job'], evtCount) # jobleave(job, status)
 
 def EvtSubscribe(binder, userdata):
     response= libafb.callsync(binder, "helloworld-event", "subscribe")
@@ -57,7 +57,7 @@ def EvtWaitCount(job, signum, userdata):
     return 0
 
 def EvtGet5Test(binder, userdata):
-    status= libafb.jobstart(binder, EvtWaitCount, userdata['timeout'], userdata)
+    status= libafb.jobrun(binder, EvtWaitCount, userdata['timeout'], userdata)
     if status < 0:
         libafb.warning (binder, "timeout fused (should increase ?)")
         libafb.evtdelete(userdata['evtfd'])

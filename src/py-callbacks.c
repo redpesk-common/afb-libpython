@@ -399,6 +399,13 @@ OnErrorExit: {
   }
 }
 
+void GlueJobCallCb(int signum, void *userdata) {
+    GlueHandleT *glue = (GlueHandleT*)userdata;
+    assert (glue->magic == GLUE_JOB_MAGIC_TAG);
+
+    GluePcallFunc(glue, &glue->job.async, NULL, signum, 0, NULL);
+}
+
 void GlueJobEnterCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
 
     GlueHandleT *glue= (GlueHandleT*)userdata;

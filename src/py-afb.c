@@ -962,6 +962,67 @@ OnErrorExit:
     return NULL;
 }
 
+static PyObject* GlueJobCall(PyObject *self, PyObject *argsP)
+{
+    const char *errorMsg = "jobcall(handle, callback, timeout, [userdata])";
+    GlueHandleT *handle = NULL;
+
+    long count = PyTuple_GET_SIZE(argsP);
+    if (count < 3) // TODO: case where no userdata is passed
+        goto OnErrorExit;
+
+    // arg index 0: handle
+    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    if (!glue)
+        goto OnErrorExit;
+
+    // arg index 1: callback
+    // setup
+    handle = calloc(1, sizeof(GlueHandleT));
+    if (!handle) {
+        errorMsg = "out of memory";
+        goto OnErrorExit;
+    }
+    handle->magic = GLUE_JOB_MAGIC_TAG;
+    handle->job.apiv4 = GlueGetApi(glue);
+    // get callback from Python
+    handle->job.async.callbackP = PyTuple_GetItem(argsP, 1);
+    if (!PyCallable_Check(handle->job.async.callbackP)) {
+        errorMsg = "callback should be a valid callable";
+        goto OnErrorExit;
+    }
+    Py_IncRef(handle->job.async.callbackP);
+    PyObject *uidP = PyDict_GetItemString(handle->job.async.callbackP, "__name__");
+    if (uidP)
+        handle->job.async.uid = pyObjToStr(uidP);
+    Py_DecRef(uidP);
+
+    // arg index 2: timeout
+    int timeout = (int)PyLong_AsLong(PyTuple_GetItem(argsP, 2));
+    if (timeout <= 0)
+        goto OnErrorExit;
+
+    // arg index 3: userdata // TODO: case where no userdata is passed
+    handle->job.async.userdataP = PyTuple_GetItem(argsP, 3);
+    if (handle->job.async.userdataP != Py_None)
+        Py_IncRef(handle->job.async.userdataP);
+
+    // call the damned thing
+    PyThreadSave();
+    afb_sched_call(timeout, GlueJobCallCb, handle, Afb_Sched_Mode_Normal);
+    PyThreadRestore();
+
+    // return job's status
+    long status = handle->job.status;
+    GlueFreeHandleCb(handle);
+    return PyLong_FromLong(status);
+
+OnErrorExit:
+    GLUE_DBG_ERROR(afbMain, errorMsg);
+    PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    return NULL;
+}
+
 static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "jobpost(handle, callback, timeout, [userdata])";
@@ -1195,6 +1256,7 @@ static PyMethodDef MethodsDef[] = {
     {"timeraddref"   , GlueTimerAddref      , METH_VARARGS, "Addref to existing timer"},
     {"timernew"      , GlueTimerNew         , METH_VARARGS, "Create a new timer"},
     {"setloa"        , GlueSetLoa           , METH_VARARGS, "Set LOA (LevelOfAssurance)"},
+    {"jobcall"       , GlueJobCall          , METH_VARARGS, "Synchronously call job in the current thread"},
     {"jobenter"      , GlueJobEnter         , METH_VARARGS, "Register a mainloop waiting lock"},
     {"jobleave"      , GlueJobLeave         , METH_VARARGS, "Unlock jobenter"},
     {"jobpost"       , GlueJobPost          , METH_VARARGS, "Post a job after timeout(ms)"},

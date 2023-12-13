@@ -57,7 +57,7 @@ def EvtWaitCount(job, signum, userdata):
     return 0
 
 def EvtGet5Test(binder, userdata):
-    status= libafb.jobrun(binder, EvtWaitCount, userdata['timeout'], userdata)
+    status= libafb.jobenter(binder, EvtWaitCount, userdata['timeout'], userdata)
     if status < 0:
         libafb.warning (binder, "timeout fused (should increase ?)")
         libafb.evtdelete(userdata['evtfd'])

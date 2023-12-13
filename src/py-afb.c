@@ -1018,9 +1018,9 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject* GlueJobRun(PyObject *self, PyObject *argsP)
+static PyObject* GlueJobEnter(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "jobrun(handle, callback, timeout, [userdata])";
+    const char *errorMsg = "jobenter(handle, callback, timeout, [userdata])";
     GlueHandleT *handle=NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -1055,7 +1055,7 @@ static PyObject* GlueJobRun(PyObject *self, PyObject *argsP)
     if (handle->job.async.userdataP != Py_None) Py_IncRef(handle->job.async.userdataP);
 
     PyThreadSave();
-    int err= afb_sched_enter(NULL, (int)timeout, GlueJobRunCb, handle);
+    int err= afb_sched_enter(NULL, (int)timeout, GlueJobEnterCb, handle);
     PyThreadRestore();
     if (err < 0) {
         errorMsg= "afb_sched_enter (timeout?)";
@@ -1195,8 +1195,8 @@ static PyMethodDef MethodsDef[] = {
     {"timeraddref"   , GlueTimerAddref      , METH_VARARGS, "Addref to existing timer"},
     {"timernew"      , GlueTimerNew         , METH_VARARGS, "Create a new timer"},
     {"setloa"        , GlueSetLoa           , METH_VARARGS, "Set LOA (LevelOfAssurance)"},
-    {"jobrun"        , GlueJobRun           , METH_VARARGS, "Register a mainloop waiting lock"},
-    {"jobleave"      , GlueJobLeave         , METH_VARARGS, "Unlock jobrun"},
+    {"jobenter"      , GlueJobEnter         , METH_VARARGS, "Register a mainloop waiting lock"},
+    {"jobleave"      , GlueJobLeave         , METH_VARARGS, "Unlock jobenter"},
     {"jobpost"       , GlueJobPost          , METH_VARARGS, "Post a job after timeout(ms)"},
     {"jobabort"      , GlueJobAbort         , METH_VARARGS, "Cancel a jobpost timer"},
     {"clientinfo"    , GlueClientInfo       , METH_VARARGS, "Return seesion info about client"},

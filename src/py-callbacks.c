@@ -399,7 +399,7 @@ OnErrorExit: {
   }
 }
 
-void GlueJobRunCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
+void GlueJobEnterCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
 
     GlueHandleT *glue= (GlueHandleT*)userdata;
     assert (glue->magic == GLUE_JOB_MAGIC_TAG);

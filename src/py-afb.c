@@ -832,12 +832,12 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     PyObject *uidP= PyDict_GetItemString(configP, "uid");
     if (!uidP || !PyUnicode_Check(uidP)) goto OnErrorExit;
     handle->event.async.uid= pyObjToStr(uidP);
-    if (handle->event.async.uid) goto OnErrorExit;
+    if (!handle->event.async.uid) goto OnErrorExit;
 
     PyObject *patternP= PyDict_GetItemString(configP, "pattern");
     if (!patternP || !PyUnicode_Check(patternP)) goto OnErrorExit;
     handle->event.pattern= pyObjToStr(patternP);
-    if (handle->event.pattern) goto OnErrorExit;
+    if (!handle->event.pattern) goto OnErrorExit;
 
     handle->event.async.callbackP= PyDict_GetItemString(configP, "callback");
     if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP)) goto OnErrorExit;

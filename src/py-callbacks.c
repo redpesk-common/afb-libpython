@@ -399,20 +399,19 @@ OnErrorExit: {
   }
 }
 
-void GlueJobCallCb(int signum, void *userdata) {
+void GlueJobCallCb(int signum, void *userdata)
+{
+    GlueJobEnterCb(signum, userdata, NULL);
+}
+
+void GlueJobEnterCb(int signum, void *userdata, struct afb_sched_lock *afbLock)
+{
     GlueHandleT *glue = (GlueHandleT*)userdata;
     assert (glue->magic == GLUE_JOB_MAGIC_TAG);
 
+    if (afbLock)
+        glue->job.afb= afbLock;
     GluePcallFunc(glue, &glue->job.async, NULL, signum, 0, NULL);
-}
-
-void GlueJobEnterCb (int signum, void *userdata, struct afb_sched_lock *afbLock) {
-
-    GlueHandleT *glue= (GlueHandleT*)userdata;
-    assert (glue->magic == GLUE_JOB_MAGIC_TAG);
-
-    glue->job.afb= afbLock;
-    GluePcallFunc (glue, &glue->job.async, NULL, signum, 0, NULL);
 }
 
 // used when declaring event with the api

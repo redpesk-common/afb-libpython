@@ -46,5 +46,5 @@ void GlueTimerCb (afb_timer_x4_t timer, void *userdata, unsigned decount);
 void GlueJobPostCb(int signum, void *userdata);
 void GlueJobCallCb(int signum, void *userdata);
 void GlueJobEnterCb(int signum, void *userdata, struct afb_sched_lock *afbLock);
-void GlueFreeCapculeCb(PyObject *capculeP);
+void GlueFreeCapsuleCb(PyObject *capsuleP);
 void GlueFreeHandleCb(GlueHandleT *handle);

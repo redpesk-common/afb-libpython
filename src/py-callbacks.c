@@ -79,8 +79,8 @@ OnErrorExit:
     LIBAFB_ERROR ("try to release a protected handle");
 }
 
-void GlueFreeCapculeCb(PyObject *capculeP) {
-   GlueHandleT *handle= PyCapsule_GetPointer(capculeP, GLUE_AFB_UID);
+void GlueFreeCapsuleCb(PyObject *capsuleP) {
+   GlueHandleT *handle= PyCapsule_GetPointer(capsuleP, GLUE_AFB_UID);
    GlueFreeHandleCb (handle);
 }
 
@@ -124,7 +124,7 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     // prepare calling argument list
     PyObject *argsP= PyTuple_New(nparams+1);
     glue->usage++;
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
+    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapsuleCb));
 
     // retreive input arguments and convert them to json
     for (int idx = 0; idx < nparams; idx++)
@@ -250,7 +250,7 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
         GLUE_AFB_NOTICE(glue,"GlueCtrlCb: state=[%s]", state);
         PyThreadRestore();
         glue->usage++;
-        PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb), state);
+        PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapsuleCb), state);
         if (!resultP) goto OnErrorExit;
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
@@ -362,7 +362,7 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
     // prepare calling argument list
     PyObject *argsP= PyTuple_New(nreplies+3);
     glue->usage++;
-    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapculeCb));
+    PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapsuleCb));
     if (label) PyTuple_SetItem (argsP, 1, PyUnicode_FromString(label));
     else PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
 

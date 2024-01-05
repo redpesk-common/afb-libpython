@@ -168,9 +168,9 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
     errorMsg= AfbBinderConfig(configJ, &afbMain->binder.afb, afbMain);
     if (errorMsg) goto OnErrorExit;
 
-    // return afbMain glue as a Python capcule glue
-    PyObject *capcule= PyCapsule_New(afbMain, GLUE_AFB_UID, NULL);
-    return capcule;
+    // return afbMain glue as a Python capsule glue
+    PyObject *capsule= PyCapsule_New(afbMain, GLUE_AFB_UID, NULL);
+    return capsule;
 
 OnErrorExit:
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
@@ -238,8 +238,8 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
         goto OnErrorExit;
 
     // return api glue
-    PyObject *capcule= PyCapsule_New(glue, GLUE_AFB_UID, NULL);
-    return capcule;
+    PyObject *capsule= PyCapsule_New(glue, GLUE_AFB_UID, NULL);
+    return capsule;
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
@@ -312,10 +312,10 @@ OnErrorExit:
 static PyObject* GlueGetConfig(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "syntax: config(handle[,key])";
-    PyObject *capculeP, *configP, *resultP, *slotP, *keyP=NULL;
-    if (!PyArg_ParseTuple(argsP, "O|O", &capculeP, &keyP)) goto OnErrorExit;
+    PyObject *capsuleP, *configP, *resultP, *slotP, *keyP=NULL;
+    if (!PyArg_ParseTuple(argsP, "O|O", &capsuleP, &keyP)) goto OnErrorExit;
 
-    GlueHandleT* glue= PyCapsule_GetPointer(capculeP, GLUE_AFB_UID);
+    GlueHandleT* glue= PyCapsule_GetPointer(capsuleP, GLUE_AFB_UID);
     if (!glue) goto OnErrorExit;
 
     switch (glue->magic)
@@ -852,11 +852,11 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     if (errorMsg) goto OnErrorExit;
 
     // return api glue
-    PyObject *capcule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeCapculeCb);
+    PyObject *capsule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeCapsuleCb);
     Py_DecRef(uidP);
     Py_DecRef(patternP);
 
-    return capcule;
+    return capsule;
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);

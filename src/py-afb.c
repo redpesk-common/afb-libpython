@@ -230,7 +230,9 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
             }
             usrApiCb = GlueCtrlCb;
         }
+        PyThreadSave();
         errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, usrApiCb, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
+        PyThreadRestore();
     }
     if (errorMsg)
         goto OnErrorExit;

@@ -221,16 +221,16 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
     else
     {
         // check if control python api function is defined
+        afb_api_callback_x4_t usrApiCb = NULL;
         glue->api.ctrlCb= PyDict_GetItemString(glue->api.configP, "control");
         if (glue->api.ctrlCb) {
             if (!PyCallable_Check(glue->api.ctrlCb)) {
                 errorMsg="APi control func defined but but callable";
                 goto OnErrorExit;
             }
-            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, GlueCtrlCb, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
-        } else {
-            errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, NULL, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
+            usrApiCb = GlueCtrlCb;
         }
+        errorMsg = AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, usrApiCb, GlueInfoCb, GlueApiVerbCb, GlueApiEventCb, glue);
     }
     if (errorMsg)
         goto OnErrorExit;

@@ -501,6 +501,8 @@ void GlueJobPostCb (int signum, void *userdata) {
     assert (handle->magic == GLUE_POST_MAGIC_TAG);
     if (!signum) GluePcallFunc (handle->glue, &handle->async, NULL, signum, 0, NULL);
     free (handle->async.uid);
+    Py_DecRef(handle->async.callbackP);
+    if (handle->async.userdataP) Py_DecRef(handle->async.userdataP);
     free (handle);
 }
 

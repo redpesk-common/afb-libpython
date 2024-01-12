@@ -264,7 +264,7 @@ static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
 // this routine execute within mainloop context when binder is ready to go
 static PyObject* GlueLoopStart(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: loopstart(binder,[callback],[userdta])";
+    const char *errorMsg = "syntax: loopstart(binder,[callback],[userdata])";
     int status;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -990,6 +990,7 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
         errorMsg="syntax: callback should be a valid callable function";
         goto OnErrorExit;
     }
+
     Py_IncRef(handle->async.callbackP);
     PyObject *uidP= PyDict_GetItemString(handle->async.callbackP, "__name__");
     if (uidP) handle->async.uid= pyObjToStr(uidP);
@@ -1005,9 +1006,6 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
     int jobid= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,GlueJobPostCb, handle, Afb_Sched_Mode_Start);
     if (jobid <= 0) goto OnErrorExit;
 
-    Py_DecRef(handle->async.callbackP);
-    if (handle->async.userdataP) Py_DecRef(handle->async.userdataP);
-    free (handle);
     return PyLong_FromLong(jobid);
 
 OnErrorExit:

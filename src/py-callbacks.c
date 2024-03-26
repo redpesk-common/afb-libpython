@@ -40,6 +40,8 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
     switch (handle->magic) {
         case GLUE_EVT_MAGIC_TAG:
             if (handle->usage < 0) {
+                // Make sure the associated event is unsubscribed before freeing
+                AfbDelOneEvent(handle->event.apiv4, handle->event.pattern, NULL);
                 free (handle->event.pattern);
                 free (handle->event.async.uid);
                 Py_DecRef(handle->event.configP);

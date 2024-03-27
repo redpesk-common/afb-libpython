@@ -1,4 +1,9 @@
-cmake_policy(SET CMP0048 NEW)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
-project(afb-libpython VERSION 1.0.3)
-include(${CMAKE_CURRENT_SOURCE_DIR}/conf.d/cmake/config.cmake)
+
+cmake_minimum_required(VERSION 3.17)
+project(afb-libpython
+	VERSION 1.0.4
+	DESCRIPTION "Provide glue to user afb-libafb from python"
+	HOMEPAGE_URL "https://github.com/redpesk-common/afb-libpython"
+	LANGUAGES C)
+
+add_subdirectory(src)

@@ -14,19 +14,22 @@
 # limitations under the License.
 ###########################################################################
 
-PROJECT_TARGET_ADD(afbpyglue)
+find_package(PkgConfig REQUIRED)
 
-    find_package (Python3 COMPONENTS Interpreter Development)
-    set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
+find_package(Python3 COMPONENTS Interpreter Development)
+
+pkg_check_modules(deps REQUIRED python3 libafb libafb-binder)
+
+set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 
     # Define project Targets
-    Python3_add_library(${TARGET_NAME} MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
+Python3_add_library(afbpyglue MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
+target_compile_options(afbpyglue PRIVATE ${deps_CFLAGS})
+target_link_options(afbpyglue PRIVATE ${deps_LDFLAGS})
 
-    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+set_target_properties(afbpyglue PROPERTIES
         PREFIX "_"
 	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so
-    )
+)
 
-    INSTALL(TARGETS ${TARGET_NAME}
-        DESTINATION ${DLDIR}
-    )
+install(TARGETS afbpyglue DESTINATION ${DLDIR})

@@ -967,7 +967,7 @@ OnErrorExit:
 
 static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "jobpost(handle, callback, timeout, [userdata])";
+    const char *errorMsg = "jobpost(handle, callback, delay, [userdata])";
     GlueCallHandleT *handle=NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -996,14 +996,14 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
     if (uidP) handle->async.uid= pyObjToStr(uidP);
     Py_DecRef(uidP);
 
-    long timeout= PyLong_AsLong(PyTuple_GetItem(argsP,2));
-    if (timeout <= 0) goto OnErrorExit;
+    long delay= PyLong_AsLong(PyTuple_GetItem(argsP,2));
+    if (delay <= 0) goto OnErrorExit;
 
     handle->async.userdataP =PyTuple_GetItem(argsP,3);
     if (handle->async.userdataP != Py_None) Py_IncRef(handle->async.userdataP);
 
-    // ms delay for OnTimerCB (timeout is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
-    int jobid= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,GlueJobPostCb, handle, Afb_Sched_Mode_Start);
+    // ms delay for OnTimerCB (delay is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
+    int jobid= afb_sched_post_job (NULL /*group*/, delay,  0 /*exec-timeout*/,GlueJobPostCb, handle, Afb_Sched_Mode_Start);
     if (jobid <= 0) goto OnErrorExit;
 
     return PyLong_FromLong(jobid);
@@ -1225,9 +1225,9 @@ static PyMethodDef MethodsDef[] = {
     {"jobcall"       , GlueJobCall       , METH_VARARGS, "Synchronously call job in the current thread"},
     {"jobenter"      , GlueJobEnter      , METH_VARARGS, "Register a mainloop waiting lock"},
     {"jobleave"      , GlueJobLeave      , METH_VARARGS, "Unlock jobenter"},
-    {"jobpost"       , GlueJobPost       , METH_VARARGS, "Post a job after timeout(ms)"},
+    {"jobpost"       , GlueJobPost       , METH_VARARGS, "Post a job after delay(ms)"},
     {"jobabort"      , GlueJobAbort      , METH_VARARGS, "Cancel a jobpost timer"},
-    {"clientinfo"    , GlueClientInfo    , METH_VARARGS, "Return seesion info about client"},
+    {"clientinfo"    , GlueClientInfo    , METH_VARARGS, "Return session info about client"},
     {"exit"          , GlueExit          , METH_VARARGS, "Exit binder with status"},
 
     {NULL}  /* sentinel */

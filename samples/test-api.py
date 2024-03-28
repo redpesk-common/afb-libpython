@@ -21,9 +21,9 @@ config: following should match your installation paths
     - PYTHONPATH='/my-py-module-path' (to _afbpyglue.so)
     - LD_LIBRARY_PATH='/my-glulib-path' (to libafb-glue.so
 """
+
 # import libafb python glue
 from afbpyglue import libafb
-import os
 import sys
 
 ## static variables
@@ -67,7 +67,6 @@ def EvtGet5Test(binder, userdata):
 def StartTest(binder, testcase):
     #global myTestCase
     status=0
-    timeout=5 # seconds
     libafb.notice(binder, "StartTest binder=[%s]", libafb.config(binder, "uid"))
 
     # loop on all tests
@@ -86,7 +85,6 @@ bindingOpts = {
     'uid'    : 'helloworld-event',
     'export' : 'private',
     'path'   : 'afb-helloworld-subscribe-event.so',
-    'ldpath' : [os.getenv("HOME")+'/opt/helloworld-binding/lib','/usr/local/helloworld-binding/lib'],
 }
 
 # define and instantiate libafb-binder
@@ -119,5 +117,3 @@ except Exception:
     libafb.error(binder, "loopstart raise an exception error=%s", sys.exc_info()[0])
 finally:
     libafb.notice(binder, "loopstart done status=%d", status)
-
-

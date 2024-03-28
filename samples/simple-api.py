@@ -31,7 +31,7 @@ def pingCB(rqt, *args):
     return (0, {"pong":count}) # implicit response
 
 def argsCB(rqt, *args):
-    libafb.notice  (rqt, "actionCB query=%s", args)
+    libafb.notice(rqt, "actionCB query=%s", args)
     libafb.reply (rqt, 0, {'query': args})
 
 ## executed when binder is ready to serv

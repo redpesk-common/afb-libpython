@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-
 """
 Copyright 2021 Fulup Ar Foll fulup@iot.bzh
 Licence: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END_LICENSE$
@@ -22,7 +21,6 @@ config: following should match your installation paths
     - devtools alias should point to right path alias= {'/devtools:/usr/share/afb-ui-devtools/binder'},
     - PYTHONPATH:'/my-py-module-path' (to _afbpyglue.so)
     - LD_LIBRARY_PATH:'/my-glulib-path' (to libafb-glue.so
-
 """
 
 # import libafb python glue

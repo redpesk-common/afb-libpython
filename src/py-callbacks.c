@@ -33,6 +33,14 @@
 #include "py-utils.h"
 #include "py-callbacks.h"
 
+/*
+ * All callback functions here that call user-supplied Python
+ * functions make sure the current thread is known by the main Python
+ * interpreter and acquire the Global Interpreter Lock through
+ * PyGILState_Ensure() / PyGILState_Release() so that the main
+ * interpreter can correctly switch between threads.
+ */
+
 void GlueFreeHandleCb(GlueHandleT *handle) {
     if (!handle) goto OnErrorExit;
     handle->usage--;
@@ -90,7 +98,7 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
     const char *errorMsg = NULL;
     int err;
 
-    PyThreadRestore();
+    PyGILState_STATE gilState = PyGILState_Ensure();
 
     // new afb request
     GlueHandleT *glue= PyRqtNew(afbRqt);
@@ -187,7 +195,7 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
         Py_DECREF (resultP);
     }
 
-    PyThreadSave();
+    PyGILState_Release(gilState);
     return;
 
 OnErrorExit:
@@ -197,7 +205,7 @@ OnErrorExit:
         GLUE_AFB_WARNING(glue, "verb=[%s] python=%s", afb_req_get_called_verb(afbRqt), json_object_get_string(errorJ));
         afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
         GlueAfbReply(glue, -1, 1, &reply);
-        PyThreadSave();
+        PyGILState_Release(gilState);
     }
 }
 
@@ -250,14 +258,17 @@ int GlueCtrlCb(afb_api_t apiv4, afb_ctlid_t ctlid, afb_ctlarg_t ctlarg, void *us
 
         // effectively exec PY script code
         GLUE_AFB_NOTICE(glue,"GlueCtrlCb: state=[%s]", state);
-        PyThreadRestore();
+        PyGILState_STATE gilState = PyGILState_Ensure();
         glue->usage++;
         PyObject *resultP= PyObject_CallFunction (glue->api.ctrlCb, "Os", PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapsuleCb), state);
-        if (!resultP) goto OnErrorExit;
+        if (!resultP) {
+            PyGILState_Release(gilState);
+            goto OnErrorExit;
+        }
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
-        PyThreadSave();
-    }
+        PyGILState_Release(gilState);
+   }
     return status;
 
 OnErrorExit:
@@ -273,9 +284,10 @@ int GlueStartupCb(void *config, void *userdata)
     assert(glue && GlueGetApi(glue));
     int status=0;
 
-    PyThreadRestore();
     if (async->callbackP)
     {
+        PyGILState_STATE state = PyGILState_Ensure();
+
         PyObject *argsP;
         argsP= PyTuple_New(2);
 
@@ -285,28 +297,32 @@ int GlueStartupCb(void *config, void *userdata)
         else PyTuple_SetItem (argsP, 1, async->userdataP);
 
         PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
-        if (!resultP) goto OnErrorExit;
+        if (!resultP) {
+            PyGILState_Release(state);
+            goto OnErrorExit;
+        }
         status= (int)PyLong_AsLong(resultP);
         Py_DECREF (resultP);
         Py_DECREF (async->callbackP);
         free (async);
+
+        PyGILState_Release(state);
     }
-    PyThreadSave();
     return status;
 
 OnErrorExit: {
     GLUE_AFB_WARNING(afbMain, "Mainloop killed");
-    PyThreadSave();
     return -1;
 }
 }
 
 void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 {
+    PyGILState_STATE gilState = PyGILState_Ensure();
+
     afb_api_t apiv4 = afb_req_get_api(afbRqt);
     afb_data_t reply;
 
-    // retreive interpreteur from API
     GlueHandleT *glue = afb_api_get_userdata(apiv4);
     assert(glue->magic == GLUE_API_MAGIC_TAG);
 
@@ -317,6 +333,8 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 
     uid= PyUnicode_AsUTF8(uidP);
     if (infoP) info=PyUnicode_AsUTF8(infoP);
+
+    PyGILState_Release(gilState);
 
     json_object *metaJ = json_object_new_object();
     json_object_object_add(metaJ, "uid", json_object_new_string(uid));
@@ -353,7 +371,7 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *label, int status, unsigned nreplies, afb_data_t const replies[]) {
     const char *errorMsg = "internal-error";
 
-    PyThreadRestore();
+    PyGILState_STATE state = PyGILState_Ensure();
 
     // subcall was refused
     if (AFB_IS_BINDER_ERRNO(status)) {
@@ -384,7 +402,7 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
         errorMsg="function-fail";
         goto OnErrorExit;
     }
-    PyThreadSave();
+    PyGILState_Release(state);
     return;
 
 OnErrorExit: {
@@ -397,7 +415,7 @@ OnErrorExit: {
         afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put, errorJ);
         GlueAfbReply(glue, -1, 1, &reply);
     }
-    PyThreadSave();
+    PyGILState_Release(state);
   }
 }
 
@@ -418,6 +436,8 @@ void GlueJobEnterCb(int signum, void *userdata, struct afb_sched_lock *afbLock)
 
 // used when declaring event with the api
 void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_data_x4_t const params[], afb_api_t api) {
+    PyGILState_STATE gilState = PyGILState_Ensure();
+
     const char *errorMsg;
     GlueHandleT *glue= (GlueHandleT*) afb_api_get_userdata(api);
     assert (glue->magic == GLUE_API_MAGIC_TAG);
@@ -456,9 +476,11 @@ void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_da
 
     //GluePcallFunc (glue, (GlueAsyncCtxT*)vcbData->callback, label, 0, nparams, params);
     GluePcallFunc (glue, (GlueAsyncCtxT*)vcbData->callback, label, 0, 0, NULL);
+    PyGILState_Release(gilState);
     return;
 OnErrorExit:
     GLUE_DBG_ERROR(glue, errorMsg);
+    PyGILState_Release(gilState);
 }
 
 // user when declaring event with libafb.evthandler

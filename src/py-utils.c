@@ -33,50 +33,6 @@
 
 #include <semaphore.h>
 
-static pthread_once_t onceKey = PTHREAD_ONCE_INIT;
-static pthread_key_t dataKey;
-static PyThreadState *main_py;
-
-static void FreePrivateData(void *ctx) {
-    PyThreadState *py = ctx;
-    Py_EndInterpreter(py);
-}
-
-static void NewPrivateData(void) {
-    pthread_key_create(&dataKey, FreePrivateData);
-}
-
-// initialise per thread user data key
-int InitPrivateData(GlueHandleT *glue) {
-#if PY_MINOR_VERSION < 7
-    PyEval_InitThreads(); // from 3.7 this is useless
-#endif
-    glue->binder.pyState= PyThreadState_Get();
-    (void) pthread_once(&onceKey, NewPrivateData);
-    return 0;
-}
-
-void PyThreadSave() {
-    if (!main_py)
-        main_py = PyThreadState_Get();
-    PyEval_SaveThread();
-}
-
-void PyThreadRestore() {
-    PyThreadState *current_py = pthread_getspecific(dataKey);
-
-    if (current_py == NULL) {
-        if (!main_py)
-            main_py = PyThreadState_Get(); // ALERT should not happen
-        else
-            PyEval_RestoreThread(main_py);
-        current_py = Py_NewInterpreter();
-        pthread_setspecific(dataKey, current_py);
-        PyEval_SaveThread();
-    }
-    PyEval_RestoreThread(current_py);
-}
-
 // retreive API from py handle
 afb_api_t GlueGetApi(GlueHandleT *glue) {
    afb_api_t afbApi;
@@ -583,9 +539,11 @@ GlueHandleT *PyRqtNew(afb_req_t afbRqt)
 int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply)
 {
     if (glue->rqt.replied) goto OnErrorExit;
-    PyThreadSave();
+
+    Py_BEGIN_ALLOW_THREADS
     afb_req_reply(glue->rqt.afb, (int)status, (int)nbreply, reply);
-    PyThreadRestore();
+    Py_END_ALLOW_THREADS
+
     glue->rqt.replied = 1;
     return 0;
 

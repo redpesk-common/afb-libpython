@@ -444,7 +444,7 @@ void GlueApiEventCb (void *userdata, const char *label, unsigned nparams, afb_da
 
     // on first call we compile configJ to boost following py api/verb calls
     AfbVcbDataT *vcbData= userdata;
-    if (vcbData->magic != (void*)AfbAddVerbs) {
+    if (vcbData->magic != (void*)AfbAddEvents) {
         errorMsg = "(hoops) event invalid vcbData handle";
         goto OnErrorExit;
     }

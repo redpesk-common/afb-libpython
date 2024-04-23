@@ -10,7 +10,6 @@ script in Python to either mock binding apis, test a client, quick prototyping,
 * `afb-libafb` (from jan/2022 version)
 * `afb-libglue`
 * `python3`
-* `afb-cmake-modules`
 
 ## Building
 
@@ -26,7 +25,6 @@ script in Python to either mock binding apis, test a client, quick prototyping,
 Make sure that your dependencies are reachable from the Python scripting engine, before starting your test.
 
 ```bash
-    export LD_LIBRARY_PATH=/path/to/'afb-libglue.so'
     export PYTHONPATH=/path/to/'_afbpyglue.so'
     python3 sample/simple-api.python
     #http://localhost:1234/devtools
@@ -34,7 +32,7 @@ Make sure that your dependencies are reachable from the Python scripting engine,
 
 ## Debug from codium
 
-Codium does not include the GDP profile by default, you should get it from the Ms-Code repository
+Codium does not include the GDB profile by default, you should get it from the Ms-Code repository
 
 Go to the VSCode marketplace and download a version compatible with your editor version:
 
@@ -52,7 +50,7 @@ WARNING: the latest version is probably not compatible with your codium version.
 
 ## Import afb-pythonglue
 
-Your Python script should import `afb-pythonglue`. This require returns a table
+Your Python script should import `afbpyglue`. This require returns a table
 which contains the C module api.
 
 ```python
@@ -68,7 +66,6 @@ which contains the C module api.
 When running mock binding APIs a very simple configuration like the following one
 should be enough. For the full options of `libafb.binder` check the libglue API
 documentation.
-
 
 ```python
     # define and instantiate libafb-binder
@@ -107,11 +104,12 @@ visible from HTTP. When `export=private` they remain visible only from internal
 calls. `export=restricted` allows to expose an API as a unix socket only, with the
 `uri=unix:@api-name` tag.
 
-Expose a new api with ```libafb.apiadd(demoApi)``` as in the following example.
+Expose a new api with `libafb.apiadd(demoApi)` as in the following example.
 
 Note that the library automatically exports an `info` verb documenting the
 binding based on what was provided into each verb data structure. Attempts to
 define one will lead to an error at the library startup time like the following:
+
 ```
 ERROR: { "uid": "cp-test", "verb": "info", "callback":
 "UnknownCallbackFuncName", "info": "ping verb, use it to test the binding is alive",
@@ -337,6 +335,7 @@ This later case is mandatory when we have to start the loopstart to listen
 to events, but still need to exit to run a new set of tests.
 
 In the following example:
+
 * `jobenterCB` callback starts an event handler and passes the lock as an event context
 * the event handler counts the number of events and after 5 events releases the lock.
 
@@ -345,12 +344,10 @@ Notes:
 * `libafb.jobenter` does not return before the lock is released. As for events, it
   is the developer responsibility to either carry the lock in a context or to
   store it within a shared space, to order the unlock function to access it.
-
 * it is possible to serialize `libafb.jobenter` in order to build an asynchronous
   cascade of asynchronous tests.
 
 ```python
-
     def EventReceiveCB(evt, name, lock, *data):
         global evtCount
         libafb.notice (evt, "event=%s data=%s", name, data)
@@ -384,6 +381,7 @@ Notes:
 
 In general, in case of an error, the infrastructure will retrieve and display
 the underlying Python error like the following syntax issue:
+
 ```
 $ python3 demo.py
 File "/home/michel/demo.py", line 24
@@ -420,6 +418,5 @@ yield more information (this might not always be possible though).
 ## Miscellaneous APIs/utilities
 
 * `libafb.clientinfo(rqt)`: returns client session info.
-* `libafb.pythonstrict(true)`: prevents Python from creating global variables.
 * `libafb.config(handle, "key")`: returns binder/rqt/timer/... config
 * `libafb.notice|warning|error|debug()`: print corresponding hookable syslog trace

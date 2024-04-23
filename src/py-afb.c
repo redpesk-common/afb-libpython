@@ -92,7 +92,7 @@ static PyMemberDef PyResponseMembers[] = {
 
 static PyTypeObject PyResponseType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "_afbpyglue.response",
+    .tp_name = "libafb.response",
     .tp_doc = "AFB response object",
     .tp_basicsize = sizeof(PyResponseObjectT),
     .tp_itemsize = 0,
@@ -1238,14 +1238,14 @@ static PyMethodDef MethodsDef[] = {
 
 static PyModuleDef ModuleDef = {
     PyModuleDef_HEAD_INIT,
-    "_afbpyglue",
-    "Python 'afb-glue' expose 'afb-libafb' to Python scripting language.",
+    "libafb",
+    "Python 'libafb' expose 'afb-libafb' to Python scripting language.",
     -1, // Rationale for Per-module State https://www.python.org/dev/peps/pep-0630/
     MethodsDef,
 };
 
 // Init redpak native module
-PyObject* PyInit__afbpyglue(void) {
+PyObject* PyInit_libafb(void) {
     int status=0;
     fprintf (stderr, "Entering Python module initialization function %s\n", __FUNCTION__);
     PyObject *module = PyModule_Create(&ModuleDef);

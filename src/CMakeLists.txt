@@ -23,13 +23,12 @@ pkg_check_modules(deps REQUIRED python3 libafb libafb-binder)
 set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 
     # Define project Targets
-Python3_add_library(afbpyglue MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
-target_compile_options(afbpyglue PRIVATE ${deps_CFLAGS})
-target_link_options(afbpyglue PRIVATE ${deps_LDFLAGS})
+Python3_add_library(libafb MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
+target_compile_options(libafb PRIVATE ${deps_CFLAGS})
+target_link_options(libafb PRIVATE ${deps_LDFLAGS})
 
-set_target_properties(afbpyglue PROPERTIES
-        PREFIX "_"
+set_target_properties(libafb PROPERTIES
 	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so
 )
 
-install(TARGETS afbpyglue DESTINATION ${DLDIR})
+install(TARGETS libafb DESTINATION ${DLDIR})

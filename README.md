@@ -25,7 +25,7 @@ script in Python to either mock binding apis, test a client, quick prototyping,
 Make sure that your dependencies are reachable from the Python scripting engine, before starting your test.
 
 ```bash
-    export PYTHONPATH=/path/to/'_afbpyglue.so'
+    export PYTHONPATH=/path/to/libafb.so
     python3 sample/simple-api.python
     #http://localhost:1234/devtools
 ```
@@ -48,16 +48,15 @@ codium --install-extension ms-python-release.vsix
 
 WARNING: the latest version is probably not compatible with your codium version.
 
-## Import afb-pythonglue
+## Import libafb
 
-Your Python script should import `afbpyglue`. This require returns a table
+Your Python script should import `libafb`. This require returns a table
 which contains the C module api.
 
 ```python
     #!/usr/bin/python3
 
-    # Note: afbpyglue should point to __init__.py module loader
-    from afbpyglue import libafb
+    import libafb
     import os
 ```
 
@@ -397,7 +396,7 @@ the `PyErr_Fetch()` routine).
 In this case, a more generic message is displayed:
 ```
 $ python3 demo.py
-Entering Python module initialization function PyInit__afbpyglue
+Entering Python module initialization function PyInit_libafb
 NOTICE: Entering binder mainloop
 NOTICE: Entering main loop for demo binder
 WARNING: [REQ/API cloud-pub] verb=[test] python={ "message": "error during verb callback function call", 

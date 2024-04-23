@@ -18,12 +18,12 @@ usage
 
 config: following should match your installation paths
     - devtools alias should point to right path alias= {'/devtools:/usr/share/afb-ui-devtools/binder'},
-    - PYTHONPATH='/my-py-module-path' (to _afbpyglue.so)
     - LD_LIBRARY_PATH='/my-glulib-path' (to libafb-glue.so
+    - PYTHONPATH='/my-py-module-path' (to libafb.so)
 """
 
 # import libafb python glue
-from afbpyglue import libafb
+import libafb
 import sys
 
 ## static variables

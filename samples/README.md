@@ -2,7 +2,7 @@
 
 In order to debug Python directly from VScode your should do:
 
-* Set LD_LIBRARY_PATH for python to load libafb-glue.so
+* Set LD_LIBRARY_PATH for python to load libafb.so
 * Select Python3 (by default vscode generally select Python2)
 
 ## launch.json

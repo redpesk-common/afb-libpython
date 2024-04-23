@@ -967,7 +967,7 @@ OnErrorExit:
 
 static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "jobpost(handle, callback, delay, [userdata])";
+    const char *errorMsg = "jobpost(binder, callback, delay, [userdata])";
     GlueCallHandleT *handle=NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -1024,7 +1024,7 @@ OnErrorExit:
 // manual_lock means jobenter; !manual_lock means jobcall
 PyObject* GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
 {
-    const char *errorMsg = "jobcall(handle, callback, timeout, [userdata])";
+    const char *errorMsg = "jobcall(binder, callback, timeout, [userdata])";
     GlueHandleT *handle = NULL;
     int err;
 

@@ -308,7 +308,7 @@ Under normal circumstances the binder loopstart never returns. Nevertheless,
 during test phases it is very common to wait for asynchronous events before
 deciding if the test is successfully or not.
 
-loopstart is started with `libafb.loopstart(binder, ['xxx', handle])`, where `xxx' is
+loopstart is started with `libafb.loopstart(binder, [callback, userdata])`, where callback is
 an optional startup function that controls loopstart execution. There are two ways
 to control the loopstart: standard and jobenter modes.
 
@@ -365,7 +365,7 @@ Notes:
         return 0
 
     # executed when binder and all api/interfaces are ready to serve
-    def startTestCB(binder, handle):
+    def startTestCB(binder, userdata):
         status=0
         timeout=4 # seconds
         libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))

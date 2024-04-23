@@ -999,8 +999,10 @@ static PyObject* GlueJobPost(PyObject *self, PyObject *argsP)
     long delay= PyLong_AsLong(PyTuple_GetItem(argsP,2));
     if (delay <= 0) goto OnErrorExit;
 
-    handle->async.userdataP =PyTuple_GetItem(argsP,3);
-    if (handle->async.userdataP != Py_None) Py_IncRef(handle->async.userdataP);
+    if (PyTuple_GET_SIZE(argsP) > 3) {
+        handle->async.userdataP =PyTuple_GetItem(argsP,3);
+        if (handle->async.userdataP != Py_None) Py_IncRef(handle->async.userdataP);
+    }
 
     // ms delay for OnTimerCB (delay is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
     int jobid= afb_sched_post_job (NULL /*group*/, delay,  0 /*exec-timeout*/,GlueJobPostCb, handle, Afb_Sched_Mode_Start);
@@ -1027,7 +1029,7 @@ PyObject* GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     int err;
 
     long count = PyTuple_GET_SIZE(argsP);
-    if (count < 3) // TODO: case where no userdata is passed
+    if (count < 3)
         goto OnErrorExit;
 
     // arg index 0: handle
@@ -1061,13 +1063,14 @@ PyObject* GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     if (timeout <= 0)
         goto OnErrorExit;
 
-    // arg index 3: userdata // TODO: case where no userdata is passed
-    handle->job.async.userdataP = PyTuple_GetItem(argsP, 3);
-    if (handle->job.async.userdataP != Py_None)
-        Py_IncRef(handle->job.async.userdataP);
+    // arg index 3: userdata
+    if (PyTuple_GET_SIZE(argsP) > 3) {
+        handle->job.async.userdataP = PyTuple_GetItem(argsP, 3);
+        if (handle->job.async.userdataP != Py_None)
+            Py_IncRef(handle->job.async.userdataP);
+    }
 
     // call the damned thing
-
     Py_BEGIN_ALLOW_THREADS
     if (manual_lock)
         err = afb_sched_enter(NULL, timeout, GlueJobEnterCb, handle);

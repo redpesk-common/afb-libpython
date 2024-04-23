@@ -371,13 +371,13 @@ Notes:
         libafb.notice(binder, "startTestCB=[%s]", libafb.config(binder, "uid"))
 
         libafb.notice (binder, "waiting (%ds) for test to finish", timeout)
-        status= libafb.jobenter(binder, timeout, jobenterCB, None)
+        status= libafb.jobenter(binder, timeout, jobenterCB)
 
         libafb.notice (binder, "test done status=%d", status)
         return(status) # negative status forces loopstart exit
 
     # start loopstart
-    status=libafb.loopstart(binder, startTestCB, handle)
+    status=libafb.loopstart(binder, startTestCB)
 ```
 
 ## Error management

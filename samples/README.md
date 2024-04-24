@@ -2,15 +2,16 @@
 
 In order to debug Python directly from VScode your should do:
 
-* Set LD_LIBRARY_PATH for python to load libafb.so
+* Set PYTHONPATH for python to load libafb.so
 * Select Python3 (by default vscode generally select Python2)
 
 ## launch.json
 
-Update vscode debug config with adequate LD_LIBRARY_PATH
+Update vscode debug config with adequate PYTHONPATH
+
 ```json
         {
-            "env": {"LD_LIBRARY_PATH": "${workspaceFolder}/../afb-libglue/build/src:/usr/local/lib64"},
+            "env": {"PYTHONPATH": "${workspaceFolder}/build/src"},
             "name":"Python: Current File",
             "type":"python",
             "request":"launch",
@@ -34,5 +35,3 @@ type: 'Python:Select Interpretor' and chose Python 3
 * Start debugging session
 
 `Note: Breakpoint should be introduced before debug session start.`
-
-

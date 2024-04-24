@@ -13,12 +13,11 @@ object:
     - finally (EvtReceiveCB) count 5 evts and release the loopstart lock received from aSyncEvtCheck
 
 usage
-    - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/test-api.py
+    - from dev tree: PYTHONPATH=./build/src/ python samples/test-api.py
     - result of the test position loopstart exit status
 
 config: following should match your installation paths
     - devtools alias should point to right path alias= {'/devtools:/usr/share/afb-ui-devtools/binder'},
-    - LD_LIBRARY_PATH='/my-glulib-path' (to libafb-glue.so
     - PYTHONPATH='/my-py-module-path' (to libafb.so)
 """
 

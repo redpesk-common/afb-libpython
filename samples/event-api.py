@@ -13,13 +13,12 @@ object:
     demo/subscribe|unsubscribe can be requested from REST|websocket from a browser on http:localhost:1234
 
 usage
-    - from dev tree: LD_LIBRARY_PATH=../afb-libglue/build/src/ py samples/event-api.py
+    - from dev tree: PYTHONPATH=./build/src/ python samples/event-api.py
     - point your browser at http://localhost:1234/devtools
 
 config: following should match your installation paths
     - devtools alias should point to right path alias= {'/devtools:/usr/share/afb-ui-devtools/binder'},
-    - LD_LIBRARY_PATH':/my-glulib-path' (to libafb-glue.so
-    - PYTHONPATH':/my-py-module-path' (to libafb.so)
+    - PYTHONPATH='/my-py-module-path' (to libafb.so)
 """
 
 # import libafb python glue

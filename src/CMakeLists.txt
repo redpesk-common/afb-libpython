@@ -1,5 +1,5 @@
 ###########################################################################
-# Copyright 201 IoT.bzh
+# Copyright 2024 IoT.bzh
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native modu
     # Define project Targets
 Python3_add_library(libafb MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
 target_compile_options(libafb PRIVATE ${deps_CFLAGS})
-target_link_options(libafb PRIVATE ${deps_LDFLAGS})
+target_link_libraries(libafb PRIVATE ${deps_LDFLAGS})
 
 set_target_properties(libafb PROPERTIES
 	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so

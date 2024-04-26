@@ -458,7 +458,7 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
 
     PyObject *callbackP=PyTuple_GetItem(argsP,3);
     // check callback is a valid function
-    if (!PyCallable_Check(callbackP)) goto OnErrorExit;
+    if ((callbackP != Py_None) && !PyCallable_Check(callbackP)) goto OnErrorExit;
 
     PyObject *userdataP =PyTuple_GetItem(argsP,4);
     if (userdataP != Py_None) Py_IncRef(userdataP);
@@ -475,21 +475,24 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
     }
 
-    GlueCallHandleT *handle= calloc(1,sizeof(GlueCallHandleT));
-    if (handle == NULL) {
-        errorMsg= "out of memory";
-        goto OnErrorExit;
+    GlueCallHandleT *handle = NULL;
+    if (callbackP != Py_None) {
+        handle = calloc(1,sizeof(GlueCallHandleT));
+        if (handle == NULL) {
+            errorMsg= "out of memory";
+            goto OnErrorExit;
+        }
+        handle->glue= glue;
+        handle->magic= GLUE_CALL_MAGIC_TAG;
+        handle->async.callbackP= callbackP;
+        handle->async.userdataP= userdataP;
+        Py_IncRef(handle->async.callbackP);
     }
-    handle->glue= glue;
-    handle->magic= GLUE_CALL_MAGIC_TAG;
-    handle->async.callbackP= callbackP;
-    handle->async.userdataP= userdataP;
-    Py_IncRef(handle->async.callbackP);
 
     switch (glue->magic) {
         case GLUE_RQT_MAGIC_TAG:
             Py_BEGIN_ALLOW_THREADS
-            afb_req_subcall (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, GlueRqtSubcallCb, (void*)handle);
+            afb_req_subcall (glue->rqt.afb, apiname, verbname, (int)index, params, afb_req_subcall_catch_events, handle ? GlueRqtSubcallCb : NULL, (void*)handle);
             Py_END_ALLOW_THREADS
             break;
         default:
@@ -498,7 +501,7 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
                 goto OnErrorExit;
             }
             Py_BEGIN_ALLOW_THREADS
-            afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params, GlueApiSubcallCb, (void*)handle);
+            afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params, handle ? GlueApiSubcallCb : NULL, (void*)handle);
             Py_END_ALLOW_THREADS
     }
     Py_RETURN_NONE;

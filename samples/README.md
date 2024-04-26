@@ -1,4 +1,4 @@
-# Debuging Python with vscode from sources tree
+# Debugging Python with vscode from sources tree
 
 In order to debug Python directly from VScode your should do:
 

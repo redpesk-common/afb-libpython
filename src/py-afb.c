@@ -812,7 +812,7 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "syntax: evthandler(handle, {'uid':'xxx','pattern':'yyy','callback':'zzz'}, userdata)";
     long count = PyTuple_GET_SIZE(argsP);
-    if (count != 3) goto OnErrorExit;
+    if (count < 2) goto OnErrorExit;
 
     GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
     if (!glue) goto OnErrorExit;
@@ -845,7 +845,7 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
     if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP)) goto OnErrorExit;
     Py_IncRef(handle->event.async.callbackP);
 
-    handle->event.async.userdataP = PyTuple_GetItem(argsP,2);
+    handle->event.async.userdataP = (count < 3) ? NULL : PyTuple_GetItem(argsP,2);
     if (handle->event.async.userdataP) Py_IncRef(handle->event.async.userdataP);
 
     errorMsg= AfbAddOneEvent(apiv4, handle->event.async.uid, handle->event.pattern, GlueEventCb, handle);

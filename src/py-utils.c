@@ -88,12 +88,18 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                 case Afb_Typeid_Predefined_U8:
                 case Afb_Typeid_Predefined_I16:
                 case Afb_Typeid_Predefined_U16:
-                case Afb_Typeid_Predefined_I64:
-                case Afb_Typeid_Predefined_U64:
                 case Afb_Typeid_Predefined_I32:
-                case Afb_Typeid_Predefined_U32: {
+                case Afb_Typeid_Predefined_U32:
+                case Afb_Typeid_Predefined_I64: {
+                    /* We suppose here a 64bit arch, where sizeof(long) == sizeof(long long) == 8 */
                     const long *value= (long*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyBool_FromLong(*value));
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromLong(*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_U64: {
+                    /* We suppose here a 64bit arch, where sizeof(long) == sizeof(long long) == 8 */
+                    const unsigned long *value= (unsigned long*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUnsignedLong(*value));
                     break;
                 }
                 case Afb_Typeid_Predefined_Double:

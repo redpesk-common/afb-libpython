@@ -564,6 +564,10 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
             goto OnErrorExit;
     }
 
+    if (PyErr_Occurred()) {
+        // Abort and raise the exception, if any
+        return NULL;
+    }
     if (err) {
         status   = err;
         errorMsg= "api subcall fail";

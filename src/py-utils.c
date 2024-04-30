@@ -361,8 +361,20 @@ json_object *pyObjToJson(PyObject* objP)
     if (PyBool_Check(objP))
         valueJ = json_object_new_boolean((json_bool)PyLong_AsLong(objP));
 
-    else if (PyLong_Check(objP))
-        valueJ = json_object_new_int ((int)PyLong_AsLong(objP));
+    else if (PyLong_Check(objP)) {
+        // We suppose a 64bit arch where sizeof(int) == 4, sizeof(long) == 8
+        int overflow = 0;
+        long longValue = PyLong_AsLongAndOverflow(objP, &overflow);
+        if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "A Python integer overflows the supported integer size");
+            return NULL;
+        }
+        int intValue = (int)longValue;
+        if (intValue == longValue)
+            valueJ = json_object_new_int(intValue);
+        else
+            valueJ = json_object_new_int64(longValue);
+    }
 
     else if (PyFloat_Check(objP))
         valueJ = json_object_new_double(PyFloat_AsDouble(objP));

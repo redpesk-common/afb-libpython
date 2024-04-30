@@ -47,7 +47,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
 
     switch (handle->magic) {
         case GLUE_EVT_MAGIC_TAG:
-            if (handle->usage < 0) {
+            if (handle->usage <= 0) {
                 // Make sure the associated event is unsubscribed before freeing
                 AfbDelOneEvent(handle->event.apiv4, handle->event.pattern, NULL);
                 free (handle->event.pattern);
@@ -57,7 +57,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             }
             break;
         case GLUE_JOB_MAGIC_TAG:
-            if (handle->usage < 0) {
+            if (handle->usage <= 0) {
                 Py_DecRef(handle->job.async.callbackP);
                 if (handle->job.async.userdataP) Py_DecRef(handle->job.async.userdataP);
                 free (handle->job.async.uid);
@@ -65,7 +65,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             break;
         case GLUE_TIMER_MAGIC_TAG:
             afb_timer_unref (handle->timer.afb);
-            if (handle->usage < 0) {
+            if (handle->usage <= 0) {
                 Py_DecRef(handle->timer.async.callbackP);
                 if (handle->timer.async.userdataP)Py_DecRef(handle->timer.async.userdataP);
                 free (handle->timer.async.uid);
@@ -82,7 +82,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             goto OnErrorExit;
             return;
     }
-    if (handle->usage < 0) free (handle);
+    if (handle->usage <= 0) free (handle);
     return;
 
 OnErrorExit:

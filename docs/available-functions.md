@@ -24,11 +24,11 @@ Returns: `int`, 0 for the main loop to continue indefinitely, <0 for KO, >0 for 
 There are 3 ways of running a job. This table denotes the features of
 each alternative, see below for typing and arguments documentation.
 
-| Function   | Type         | Feature | Termination           | Behavior on callback return | Behavior on callback timeout                         |
-|------------|--------------|---------|-----------------------|-----------------------------|------------------------------------------------------|
-| `jobcall`  | Synchronous  | Timeout | Callback ends/returns | Terminates, value unused    | Initial call terminates, new call with `signum` != 0 |
-| `jobenter` | Synchronous  | Timeout | `jobleave`            | Nothing happens             | Same as `jobcall` + throws exception                 |
-| `jobpost`  | Asynchronous | Delay   | `jobabort`            |                             | Does not timeout                                     |
+| Function   | Type         | Feature | Return value | Termination           | Behavior on callback return     | Behavior on callback timeout                         |
+|------------|--------------|---------|--------------|-----------------------|---------------------------------|------------------------------------------------------|
+| `jobcall`  | Synchronous  | Timeout | No           | Callback ends/returns | Terminates, value unused        | Initial call terminates, new call with `signum` != 0 |
+| `jobenter` | Synchronous  | Timeout | Yes          | `jobleave`            | None (timeout will still occur) | Same as `jobcall` + throws exception                 |
+| `jobpost`  | Asynchronous | Delay   | No           | `jobabort`            | Terminates, value unused        | Does not timeout                                     |
 
 ### `jobcall`
 
@@ -89,8 +89,6 @@ Returns: nothing
 | `status` | `int`       | Return code                                         |
 
 ### `jobpost`
-
-Broken since Python sub-interpreters removal?
 
 Returns: `int`, job ID
 

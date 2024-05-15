@@ -27,7 +27,7 @@ each alternative, see below for typing and arguments documentation.
 | Function   | Type         | Feature | Termination           | Behavior on callback return | Behavior on callback timeout                         |
 |------------|--------------|---------|-----------------------|-----------------------------|------------------------------------------------------|
 | `jobcall`  | Synchronous  | Timeout | Callback ends/returns | Terminates, value unused    | Initial call terminates, new call with `signum` != 0 |
-| `jobenter` | Synchronous  | Timeout | `jobleave`            | Nothing happens             | Currently throws an exception (see details below)    |
+| `jobenter` | Synchronous  | Timeout | `jobleave`            | Nothing happens             | Same as `jobcall` + throws exception                 |
 | `jobpost`  | Asynchronous | Delay   | `jobabort`            |                             | Does not timeout                                     |
 
 ### `jobcall`
@@ -55,14 +55,8 @@ Returns: nothing
 
 ### `jobenter`
 
-`jobenter` throws an exception in case of a timeout and should be called
-in a `try` block.
-
-When timing out, the callback SHOULD be called again with a different
-signal number, like `jobcall`, but a sad threading story proves
-otherwise, and the callback is not called again (but may be!). TLDR,
-have a check that signum is 0 in your callback, but don't rely on a
-second call when timing out.
+`jobenter` throws an exception in case of a timeout, so it should be
+called in a `try` block.
 
 Returns: `int`, status passed to `jobleave`
 
@@ -72,6 +66,8 @@ Returns: `int`, status passed to `jobleave`
 | `callback` | `Callable`  | See below                                                 |
 | `timeout`  | `int`       | Time in seconds after which execution flow is stopped     |
 | `userdata` | `Any`       | Optional; any data the user wants to pass to the callback |
+
+The timeout should be >=0, 0 meaning the callback never times out.
 
 #### `jobenter`'s callback
 

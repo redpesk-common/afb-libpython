@@ -18,7 +18,7 @@ find_package(PkgConfig REQUIRED)
 
 find_package(Python3 COMPONENTS Interpreter Development)
 
-pkg_check_modules(deps REQUIRED python3 libafb libafb-binder)
+pkg_check_modules(deps REQUIRED python3 libafb>=5.1.0 libafb-binder)
 
 set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 

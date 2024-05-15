@@ -1080,13 +1080,13 @@ PyObject* GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     // call the damned thing
     Py_BEGIN_ALLOW_THREADS
     if (manual_lock)
-        err = afb_sched_enter(NULL, timeout, GlueJobEnterCb, handle);
+        err = afb_sched_sync(timeout, GlueJobEnterCb, handle);
     else
         afb_sched_call(timeout, GlueJobCallCb, handle, Afb_Sched_Mode_Normal);
     Py_END_ALLOW_THREADS
 
     if (manual_lock && err < 0) {
-        errorMsg = "afb_sched_enter errored (timeout?)";
+        errorMsg = "afb_sched_sync errored (timeout?)";
         goto OnErrorExit;
     }
 

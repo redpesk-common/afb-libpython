@@ -53,6 +53,7 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
                 free (handle->event.pattern);
                 free (handle->event.async.uid);
                 Py_DecRef(handle->event.configP);
+                // FIXME: why decref a second time here ??
                 if ( handle->event.configP) Py_DecRef(handle->event.configP);
             }
             break;
@@ -302,7 +303,6 @@ int GlueStartupCb(void *config, void *userdata)
             goto OnErrorExit;
         }
         status= (int)PyLong_AsLong(resultP);
-        Py_DECREF (resultP);
         Py_DECREF (async->callbackP);
         free (async);
 

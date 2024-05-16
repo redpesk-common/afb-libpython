@@ -835,7 +835,6 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
 
     PyObject *configP = PyTuple_GetItem(argsP,1);
     if (!PyDict_Check(configP)) goto OnErrorExit;
-    Py_IncRef(configP);
 
     errorMsg= "config={'uid':'xxx','pattern':'yyy','callback':'zzz'}";
     PyObject *uidP= PyDict_GetItemString(configP, "uid");
@@ -860,8 +859,6 @@ static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
 
     // return api glue
     PyObject *capsule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeCapsuleCb);
-    Py_DecRef(uidP);
-    Py_DecRef(patternP);
 
     return capsule;
 

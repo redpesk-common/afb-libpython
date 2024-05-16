@@ -533,15 +533,13 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
     const char* verbname= PyUnicode_AsUTF8(PyTuple_GetItem(argsP,2));
     if (!verbname) goto OnErrorExit;
 
-    // retreive subcall api argument(s)
+    // retrieve subcall api argument(s)
     for (index = 0; index < count-3; index++)
     {
         json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP,index+3));
-        if (!argsJ)
-        {
-            errorMsg = "(hoops) afb_subcall_sync fail";
-            goto OnErrorExit;
-        }
+        if (!argsJ && PyErr_Occurred())
+            return NULL;
+
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
     }
 

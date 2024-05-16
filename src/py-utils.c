@@ -366,7 +366,7 @@ json_object *pyObjToJson(PyObject* objP)
         int overflow = 0;
         long longValue = PyLong_AsLongAndOverflow(objP, &overflow);
         if (overflow) {
-            PyErr_SetString(PyExc_ValueError, "A Python integer overflows the supported integer size");
+            PyErr_SetString(PyExc_ValueError, "A Python integer overflows the supported size of JSON integers");
             return NULL;
         }
         int intValue = (int)longValue;

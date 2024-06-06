@@ -817,50 +817,53 @@ OnErrorExit:
 
 static PyObject* GlueEvtHandler(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: evthandler(handle, {'uid':'xxx','pattern':'yyy','callback':'zzz'}, userdata)";
+    const char *errorMsg =
+      "syntax: evthandler(handle, {'pattern':'yyy','callback':'zzz'}, userdata)";
     long count = PyTuple_GET_SIZE(argsP);
-    if (count < 2) goto OnErrorExit;
+    if (count < 2)
+        goto OnErrorExit;
 
-    GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue) goto OnErrorExit;
+    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    if (!glue)
+        goto OnErrorExit;
 
     // retreive API from py handle
-    afb_api_t apiv4= GlueGetApi(glue);
-    if (!apiv4) goto OnErrorExit;
+    afb_api_t apiv4 = GlueGetApi(glue);
+    if (!apiv4)
+        goto OnErrorExit;
 
     GlueHandleT *handle = calloc(1, sizeof(GlueHandleT));
-    if (handle == NULL) goto OnErrorExit;
+    if (handle == NULL)
+        goto OnErrorExit;
     handle->magic = GLUE_EVT_MAGIC_TAG;
-    handle->event.apiv4= apiv4;
+    handle->event.apiv4 = apiv4;
 
-    PyObject *configP = PyTuple_GetItem(argsP,1);
-    if (!PyDict_Check(configP)) goto OnErrorExit;
+    PyObject *configP = PyTuple_GetItem(argsP, 1);
+    if (!PyDict_Check(configP))
+        goto OnErrorExit;
 
-    errorMsg= "config={'uid':'xxx','pattern':'yyy','callback':'zzz'}";
-    PyObject *uidP= PyDict_GetItemString(configP, "uid");
-    if (!uidP || !PyUnicode_Check(uidP)) goto OnErrorExit;
-    handle->event.async.uid= pyObjToStr(uidP);
-    if (!handle->event.async.uid) goto OnErrorExit;
+    errorMsg = "config={'pattern':'yyy','callback':'zzz'}";
 
-    PyObject *patternP= PyDict_GetItemString(configP, "pattern");
-    if (!patternP || !PyUnicode_Check(patternP)) goto OnErrorExit;
-    handle->event.pattern= pyObjToStr(patternP);
-    if (!handle->event.pattern) goto OnErrorExit;
+    PyObject *patternP = PyDict_GetItemString(configP, "pattern");
+    if (!patternP || !PyUnicode_Check(patternP))
+        goto OnErrorExit;
+    char *pattern = pyObjToStr(patternP);
 
-    handle->event.async.callbackP= PyDict_GetItemString(configP, "callback");
-    if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP)) goto OnErrorExit;
+    handle->event.async.callbackP = PyDict_GetItemString(configP, "callback");
+    if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP))
+        goto OnErrorExit;
     Py_IncRef(handle->event.async.callbackP);
 
-    handle->event.async.userdataP = (count < 3) ? NULL : PyTuple_GetItem(argsP,2);
-    if (handle->event.async.userdataP) Py_IncRef(handle->event.async.userdataP);
+    handle->event.async.userdataP = (count < 3) ? NULL : PyTuple_GetItem(argsP, 2);
+    if (handle->event.async.userdataP)
+        Py_IncRef(handle->event.async.userdataP);
 
-    errorMsg= AfbAddOneEvent(apiv4, handle->event.async.uid, handle->event.pattern, GlueEventCb, handle);
-    if (errorMsg) goto OnErrorExit;
+    errorMsg = AfbAddOneEvent(apiv4, NULL, pattern, GlueEventCb, handle);
+    free(pattern);
+    if (errorMsg)
+        goto OnErrorExit;
 
-    // return api glue
-    PyObject *capsule= PyCapsule_New(handle, GLUE_AFB_UID, GlueFreeCapsuleCb);
-
-    return capsule;
+    Py_RETURN_NONE;
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
@@ -870,22 +873,28 @@ OnErrorExit:
 
 static PyObject* GlueEvtDelete(PyObject *self, PyObject *argsP)
 {
-    const char *errorMsg = "syntax: evtdelete(handle)";
+    const char *errorMsg = "syntax: evtdelete(handle, pattern: str)";
     void *userdata;
+    char *pattern;
     long count = PyTuple_GET_SIZE(argsP);
-    if (count != 1) goto OnErrorExit;
+    if (count != 2)
+        goto OnErrorExit;
 
-    GlueHandleT* glue= PyCapsule_GetPointer(PyTuple_GetItem(argsP,0), GLUE_AFB_UID);
-    if (!glue || glue->magic != GLUE_EVT_MAGIC_TAG) goto OnErrorExit;
+    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    afb_api_t apiv4 = GlueGetApi(glue);
+    if (!apiv4)
+        goto OnErrorExit;
+    PyObject *patternP = PyTuple_GetItem(argsP, 1);
+    if (!patternP || !PyUnicode_Check(patternP))
+        goto OnErrorExit;
 
-    // retreive API from py handle
-    afb_api_t apiv4= GlueGetApi(glue);
-    if (!apiv4) goto OnErrorExit;
+    pattern = pyObjToStr(patternP);
 
-    errorMsg= AfbDelOneEvent (apiv4, glue->event.pattern, &userdata);
-    if (errorMsg) goto OnErrorExit;
-    GlueHandleT *handle= (GlueHandleT*)userdata;
-    assert (handle->magic == GLUE_EVT_MAGIC_TAG);
+    errorMsg = AfbDelOneEvent(apiv4, pattern, &userdata);
+    if (errorMsg)
+        goto OnErrorExit;
+    GlueHandleT *handle = (GlueHandleT *)userdata;
+    assert(handle->magic == GLUE_EVT_MAGIC_TAG);
     GlueFreeHandleCb(handle);
 
     Py_RETURN_NONE;

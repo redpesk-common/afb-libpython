@@ -78,8 +78,7 @@ typedef struct {
 typedef struct {
     afb_event_t afb;
     afb_api_t apiv4;
-    char *pattern;
-    PyObject *configP;
+  
     GlueAsyncCtxT async;
 } PyEventHandleT;
 

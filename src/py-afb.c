@@ -327,9 +327,6 @@ static PyObject* GlueGetConfig(PyObject *self, PyObject *argsP)
     case GLUE_TIMER_MAGIC_TAG:
         configP = glue->timer.configP;
         break;
-    case GLUE_EVT_MAGIC_TAG:
-        configP = glue->event.configP;
-        break;
     default:
         errorMsg = "GlueGetConfig: unsupported py/afb handle";
         goto OnErrorExit;

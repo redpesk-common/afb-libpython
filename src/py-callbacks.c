@@ -62,6 +62,11 @@ void GlueFreeHandleCb(GlueHandleT *handle) {
             }
             break;
 
+        case GLUE_EVT_MAGIC_TAG:
+            Py_XDECREF(handle->event.async.callbackP);
+            Py_XDECREF(handle->event.async.userdataP);
+            break;
+
         case GLUE_API_MAGIC_TAG:    // as today removing API is not supported bu libafb
         case GLUE_RQT_MAGIC_TAG:    // rqt live cycle is handle directly by libafb
         case GLUE_BINDER_MAGIC_TAG: // afbmain should never be released

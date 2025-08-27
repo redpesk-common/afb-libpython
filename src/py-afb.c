@@ -461,15 +461,74 @@ static PyObject* GlueCallAsync(PyObject *self, PyObject *argsP)
     if (userdataP != Py_None) Py_IncRef(userdataP);
 
     // retreive subcall optional argument(s)
-    for (index= 0; index < count-5; index++)
-    {
-        json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP,index+5));
-        if (!argsJ)
-        {
-            errorMsg = "invalid input argument type";
-            goto OnErrorExit;
+    for (index = 0; index < count-3; index++) {
+        PyObject *pyArg = PyTuple_GetItem(argsP, index+3);
+
+        if (PyFloat_Check(pyArg)) {
+            double val = PyFloat_AsDouble(pyArg);
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_DOUBLE, &val, sizeof(val), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create double parameter");
+                return NULL;
+            }
         }
-        afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
+        else if (PyUnicode_Check(pyArg)) {
+            const char *str = PyUnicode_AsUTF8(pyArg);
+            if (!str) {
+                PyErr_SetString(PyExc_UnicodeError, "Failed to convert string to UTF-8");
+                return NULL;
+            }
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_STRINGZ, str, strlen(str)+1, (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create string parameter");
+                return NULL;
+            }
+        }
+        else if (PyBool_Check(pyArg)) {
+            bool bval = (pyArg == Py_True);
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_BOOL, &bval, sizeof(bval), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create boolean parameter");
+                return NULL;
+            }
+        }
+        else if (PyDict_Check(pyArg) || PyList_Check(pyArg)) {
+            json_object *jobj = pyObjToJson(pyArg);
+            if (!jobj) {
+                PyErr_SetString(PyExc_TypeError, "Failed to convert Python object to JSON");
+                return NULL;
+            }
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, jobj, 0, (void *)json_object_put, jobj);
+            if (ret != 0) {
+                json_object_put(jobj); // Clean up on failure
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create JSON parameter");
+                return NULL;
+            }
+        }
+        else if (PyLong_Check(pyArg)) {
+            int64_t i64_value = PyLong_AsLongLong(pyArg);
+            if (i64_value == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_OverflowError, "Integer value too large");
+                return NULL;
+            }
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_I64, &i64_value, sizeof(int64_t), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create integer parameter");
+                return NULL;
+            }
+        }
+        else {
+            PyErr_Format(PyExc_TypeError, "Unsupported type at position %d", index+3);
+            return NULL;
+        }
     }
 
     GlueCallHandleT *handle = NULL;
@@ -531,13 +590,74 @@ static PyObject* GlueCallSync(PyObject *self, PyObject *argsP)
     if (!verbname) goto OnErrorExit;
 
     // retrieve subcall api argument(s)
-    for (index = 0; index < count-3; index++)
-    {
-        json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP,index+3));
-        if (!argsJ && PyErr_Occurred())
-            return NULL;
+    for (index = 0; index < count-3; index++) {
+        PyObject *pyArg = PyTuple_GetItem(argsP, index+3);
 
-        afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0, (void *)json_object_put, argsJ);
+        if (PyFloat_Check(pyArg)) {
+            double val = PyFloat_AsDouble(pyArg);
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_DOUBLE, &val, sizeof(val), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create double parameter");
+                return NULL;
+            }
+        }
+        else if (PyUnicode_Check(pyArg)) {
+            const char *str = PyUnicode_AsUTF8(pyArg);
+            if (!str) {
+                PyErr_SetString(PyExc_UnicodeError, "Failed to convert string to UTF-8");
+                return NULL;
+            }
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_STRINGZ, str, strlen(str)+1, (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create string parameter");
+                return NULL;
+            }
+        }
+        else if (PyBool_Check(pyArg)) {
+            bool bval = (pyArg == Py_True);
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_BOOL, &bval, sizeof(bval), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create boolean parameter");
+                return NULL;
+            }
+        }
+        else if (PyDict_Check(pyArg) || PyList_Check(pyArg)) {
+            json_object *jobj = pyObjToJson(pyArg);
+            if (!jobj) {
+                PyErr_SetString(PyExc_TypeError, "Failed to convert Python object to JSON");
+                return NULL;
+            }
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, jobj, 0, (void *)json_object_put, jobj);
+            if (ret != 0) {
+                json_object_put(jobj); // Clean up on failure
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create JSON parameter");
+                return NULL;
+            }
+        }
+        else if (PyLong_Check(pyArg)) {
+            int64_t i64_value = PyLong_AsLongLong(pyArg);
+            if (i64_value == -1 && PyErr_Occurred()) {
+                PyErr_SetString(PyExc_OverflowError, "Integer value too large");
+                return NULL;
+            }
+            Py_INCREF(pyArg);
+            int ret = afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_I64, &i64_value, sizeof(int64_t), (void (*)(void *))Py_DECREF, pyArg);
+            if (ret != 0) {
+                Py_DECREF(pyArg);
+                PyErr_SetString(PyExc_RuntimeError, "Failed to create integer parameter");
+                return NULL;
+            }
+        }
+        else {
+            PyErr_Format(PyExc_TypeError, "Unsupported type at position %d", index+3);
+            return NULL;
+        }
     }
 
     switch (glue->magic) {

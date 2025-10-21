@@ -977,6 +977,8 @@ static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
 
     GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    if (!glue)
+        goto OnErrorExit;
     afb_api_t apiv4 = GlueGetApi(glue);
     if (!apiv4)
         goto OnErrorExit;

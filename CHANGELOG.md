@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1] - 2025-10-23
+
+- Fix passing wrong value to evtdelete (#6752)
+
 ## [2.2.0] - 2025-08-29
 
 ### Changed

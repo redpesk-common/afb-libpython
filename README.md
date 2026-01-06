@@ -20,6 +20,45 @@ script in Python to either mock binding apis, test a client, quick prototyping,
     make
 ```
 
+## install
+
+By default, the `install` target deploys the native module into Python’s `sitearch`
+directory (as detected by CMake/Python).
+
+### system-wide install
+
+```bash
+cmake -S . -B build
+cmake --build build
+sudo cmake --install build
+```
+
+### user-local install (no root)
+
+Override `DLDIR` to your user site-packages directory:
+
+```bash
+USER_SITE="$(python3 -c 'import site; print(site.getusersitepackages())')"
+
+cmake -S . -B build -DDLDIR="${USER_SITE}"
+cmake --build build
+cmake --install build
+```
+
+### quick import check
+
+After installation:
+
+```bash
+python3 -c "import libafb; print('libafb loaded:', libafb)"
+```
+
+Without installation (run from the build tree):
+
+```bash
+PYTHONPATH="$PWD/build/src" python3 -c "import libafb; print('libafb loaded:', libafb)"
+```
+
 ## Testing
 
 Make sure that your dependencies are reachable from the Python scripting engine, before starting your test.
@@ -36,8 +75,8 @@ Codium does not include the GDB profile by default, you should get it from the M
 
 Go to the VSCode marketplace and download a version compatible with your editor version:
 
-* https://github.com/microsoft/vscode-cpptools/releases
-* https://github.com/microsoft/vscode-python/releases
+* <https://github.com/microsoft/vscode-cpptools/releases>
+* <https://github.com/microsoft/vscode-python/releases>
 
 Install your extension
 
@@ -109,7 +148,7 @@ Note that the library automatically exports an `info` verb documenting the
 binding based on what was provided into each verb data structure. Attempts to
 define one will lead to an error at the library startup time like the following:
 
-```
+```bash
 ERROR: { "uid": "cp-test", "verb": "info", "callback":
 "UnknownCallbackFuncName", "info": "ping verb, use it to test the binding is alive",
 "error": "verb already exists\/registered" }
@@ -381,7 +420,7 @@ Notes:
 In general, in case of an error, the infrastructure will retrieve and display
 the underlying Python error like the following syntax issue:
 
-```
+```bash
 $ python3 demo.py
 File "/home/michel/demo.py", line 24
     print "Hello!"
@@ -394,7 +433,8 @@ retrieve the actual underlying Python error (this looks like a limitation with
 the `PyErr_Fetch()` routine).
 
 In this case, a more generic message is displayed:
-```
+
+```bash
 $ python3 demo.py
 Entering Python module initialization function PyInit_libafb
 NOTICE: Entering binder mainloop

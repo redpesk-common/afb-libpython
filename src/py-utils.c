@@ -136,32 +136,32 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                 default:
                     afb_data_t cvt;
 
-                        // 1) try convert to JSON-C
-                        if (afb_data_convert(replies[idx], &afb_type_predefined_json_c, &cvt) >= 0) {
-                            json_object *valueJ = (json_object*)afb_data_ro_pointer(cvt);
-                            PyTuple_SetItem(resultP, idx+start, valueJ ? jsonToPyObj(valueJ) : Py_None);
-                            afb_data_unref(cvt);
-                            break;
-                        }
+                    // 1) try convert to JSON-C
+                    if (afb_data_convert(replies[idx], &afb_type_predefined_json_c, &cvt) >= 0) {
+                        json_object *valueJ = (json_object*)afb_data_ro_pointer(cvt);
+                        PyTuple_SetItem(resultP, idx+start, valueJ ? jsonToPyObj(valueJ) : Py_None);
+                        afb_data_unref(cvt);
+                        break;
+                    }
 
-                        // 2) try convert to STRINGZ
-                        if (afb_data_convert(replies[idx], &afb_type_predefined_stringz, &cvt) >= 0) {
-                            const char *s = (const char*)afb_data_ro_pointer(cvt);
-                            PyTuple_SetItem(resultP, idx+start, s ? PyUnicode_FromString(s) : Py_None);
-                            afb_data_unref(cvt);
-                            break;
-                        }
+                    // 2) try convert to STRINGZ
+                    if (afb_data_convert(replies[idx], &afb_type_predefined_stringz, &cvt) >= 0) {
+                        const char *s = (const char*)afb_data_ro_pointer(cvt);
+                        PyTuple_SetItem(resultP, idx+start, s ? PyUnicode_FromString(s) : Py_None);
+                        afb_data_unref(cvt);
+                        break;
+                    }
 
-                        // 3) fallback: if a buffer exists, expose bytes
-                        size_t sz = afb_data_size(replies[idx]);
-                        if (sz > 0) {
-                            const void *buf = afb_data_ro_pointer(replies[idx]);
-                            PyTuple_SetItem(resultP, idx+start, PyBytes_FromStringAndSize(buf, (Py_ssize_t)sz));
-                            break;
-                        }
+                    // 3) fallback: if a buffer exists, expose bytes
+                    size_t sz = afb_data_size(replies[idx]);
+                    if (sz > 0) {
+                        const void *buf = afb_data_ro_pointer(replies[idx]);
+                        PyTuple_SetItem(resultP, idx+start, PyBytes_FromStringAndSize(buf, (Py_ssize_t)sz));
+                        break;
+                    }
 
-                        errorMsg = "unsupported return data type";
-                        goto OnErrorExit;
+                    errorMsg = "unsupported return data type";
+                    goto OnErrorExit;
             }
         }
     }

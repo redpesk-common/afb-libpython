@@ -521,12 +521,7 @@ PyObject * jsonToPyObj(json_object *argsJ)
         break;
     case json_type_null:
         LIBAFB_NOTICE("PyPushOneArg: NULL object type %s", json_object_to_json_string(argsJ));
-#if PY_VERSION_HEX >= 0x030a0000
-        resultP=Py_NewRef(Py_None);
-#else
-        resultP=Py_None;
-        Py_INCREF(resultP);
-#endif
+        resultP=AFB_Py_NewRef(Py_None);
         break;
     default:
         LIBAFB_ERROR("PyPushOneArg: unsupported Json object type %s", json_object_to_json_string(argsJ));

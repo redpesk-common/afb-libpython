@@ -497,7 +497,7 @@ void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_
 
     // add userdata if any
     if (!async->userdataP)
-        PyTuple_SetItem(argsP, 2, Py_None);
+        PyTuple_SetItem(argsP, 2, AFB_Py_NewRef(Py_None));
     else {
         PyTuple_SetItem(argsP, 2, async->userdataP);
         Py_IncRef(async->userdataP);

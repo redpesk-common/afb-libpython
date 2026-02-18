@@ -51,3 +51,14 @@ int InitPrivateData (GlueHandleT*glue);
 afb_api_t GlueGetApi(GlueHandleT*glue);
 int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply);
 const char *PyPushAfbReply (PyObject *responseP, int start, unsigned nreplies, const afb_data_t *replies);
+
+#if PY_VERSION_HEX >= 0x030a0000
+// Py_NewRef has been introduced in CPython 3.10
+#define AFB_Py_NewRef(x) Py_NewRef(x)
+#else
+static inline PyObject* AFB_Py_NewRef(PyObject *obj)
+{
+    Py_INCREF(obj);
+    return obj;
+}
+#endif

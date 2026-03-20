@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 
 import libafb
+import os
+import sys
 
 
 @contextmanager
@@ -12,6 +14,20 @@ def assert_raises(exception_class):
         raised = True
     assert raised
 
+@contextmanager
+def silence_stderr():
+    "Close stderr, then reopen it after exiting the context"
+    stderr_fd = sys.stderr.fileno()
+    stderr_copy = os.dup(stderr_fd)
+    os.close(stderr_fd)
+
+    try:
+        yield
+    finally:
+        os.dup2(stderr_copy, stderr_fd)
+        os.close(stderr_copy)
+
+from contextlib import redirect_stderr, redirect_stdout
 
 def test_event_handler():
     def verb_cb(handle, *args):
@@ -77,15 +93,15 @@ def test_event_handler():
         r = libafb.callsync(_binder, "py-binding", "verb", "emit")
         assert (r.status, r.args) == (0, ())
 
-    with assert_raises(RuntimeError):
         # event handler already exists
-        r = libafb.evthandler(
-            _binder,
-            {"api": "py-binding", "pattern": "py-binding/*", "callback": on_evt},
-            43,
-        )
+        with silence_stderr(), assert_raises(RuntimeError):
+            r = libafb.evthandler(
+                _binder,
+                {"api": "py-binding", "pattern": "py-binding/*", "callback": on_evt},
+                43,
+            )
 
-    with assert_raises(RuntimeError):
+    with silence_stderr(), assert_raises(RuntimeError):
         # event handler not found
         r = libafb.evtdelete(_binder, "toto")
 

@@ -66,8 +66,8 @@ def test_event_handler():
 
     my_event = libafb.evtnew(api_handler, "my_event")
 
-    ret = libafb.callsync(_binder, "py-binding", "verb", "ping", [42], 43, "toto", 3.14)
-    assert (ret.status, ret.args) == (0, ([42], 43, "toto", 3.14))
+    ret = libafb.callsync(_binder, "py-binding", "verb", "ping", None, [42], 43, "toto", 3.14)
+    assert (ret.status, ret.args) == (0, (None, [42], 43, "toto", 3.14))
 
     ret = libafb.callsync(_binder, "py-binding", "verb", "subscribe")
     assert (ret.status, ret.args) == (0, ())

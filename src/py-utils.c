@@ -294,7 +294,7 @@ void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args) {
                 param[count++]=NULL;
             }
             else {
-                paramJ[index]= pyObjToJson(argP);
+                paramJ[index]= pyObjToJson(argP, /* hasError = */ NULL);
                 if (!paramJ[index]) param[count++]=NULL;
                 else {
                     param[count++]= (void*)json_object_get_string(paramJ[index]);
@@ -380,7 +380,7 @@ json_object *PyJsonDbg(const char *message)
 }
 
 // move from python object representation to json_object representation
-json_object *pyObjToJson(PyObject* objP)
+json_object *pyObjToJson(PyObject* objP, int* hasError)
 {
     json_object *valueJ = NULL;
 
@@ -393,6 +393,8 @@ json_object *pyObjToJson(PyObject* objP)
         long longValue = PyLong_AsLongAndOverflow(objP, &overflow);
         if (overflow) {
             PyErr_SetString(PyExc_ValueError, "A Python integer overflows the supported size of JSON integers");
+            if (hasError)
+                *hasError = 1;
             return NULL;
         }
         int intValue = (int)longValue;
@@ -410,8 +412,8 @@ json_object *pyObjToJson(PyObject* objP)
         PyObject *keyP, *slotP;
         Py_ssize_t index = 0;
         while (PyDict_Next(objP, &index, &keyP, &slotP)) {
-            const char *key= PyUnicode_AsUTF8(keyP);
-            json_object *slotJ= pyObjToJson(slotP);
+            const char *key = PyUnicode_AsUTF8(keyP);
+            json_object *slotJ = pyObjToJson(slotP, /* hasError = */ NULL);
             json_object_object_add(valueJ, key, slotJ);
         }
     }
@@ -421,7 +423,7 @@ json_object *pyObjToJson(PyObject* objP)
         for (int idx=0; idx < PyList_GET_SIZE (objP); idx++) {
             PyObject *slotP= PyList_GetItem(objP, idx);
             if (slotP) {
-                json_object *slotJ= pyObjToJson(slotP);
+                json_object *slotJ= pyObjToJson(slotP, /* hasError = */ NULL);
                 json_object_array_add (valueJ, slotJ);
             }
         }
@@ -432,7 +434,7 @@ json_object *pyObjToJson(PyObject* objP)
         for (int idx=0; idx < PyTuple_GET_SIZE(objP); idx++) {
             PyObject *slotP= PyTuple_GetItem(objP, idx);
             if (slotP) {
-                json_object *slotJ= pyObjToJson(slotP);
+                json_object *slotJ= pyObjToJson(slotP, /* hasError = */ NULL);
                 json_object_array_add (valueJ, slotJ);
             }
         }
@@ -442,7 +444,7 @@ json_object *pyObjToJson(PyObject* objP)
             valueJ = json_object_new_string(PyUnicode_AsUTF8(objP));
 
     else if (objP == Py_None)
-            valueJ= NULL;
+            valueJ = NULL;
 
     // python function is not json compatible, also we keep it an object userdata context
     else if (PyCallable_Check(objP)) {
@@ -461,7 +463,9 @@ json_object *pyObjToJson(PyObject* objP)
             if (funcnameP) Py_DecRef(funcnameP);
     }
     else {
-        LIBAFB_ERROR("pyObjToJson: Unsupported value=%s", PyUnicode_AsUTF8(objP));
+        LIBAFB_ERROR("pyObjToJson: Unsupported value=%s, converting to null", PyUnicode_AsUTF8(objP));
+        if (hasError)
+            *hasError = 1;
         valueJ = NULL;
     }
 

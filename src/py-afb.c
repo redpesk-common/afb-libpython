@@ -161,8 +161,9 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
         errorMsg = "invalid config object";
         goto OnErrorExit;
     }
-    json_object *configJ = pyObjToJson(afbMain->binder.configP);
-    if (!configJ) {
+    int hasError = 0;
+    json_object *configJ = pyObjToJson(afbMain->binder.configP, &hasError);
+    if (hasError) {
         errorMsg = "json incompatible config";
         goto OnErrorExit;
     }
@@ -201,8 +202,9 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
 
     if (!PyArg_ParseTuple(argsP, "O", &glue->api.configP))
         goto OnErrorExit;
-    json_object *configJ = pyObjToJson(glue->api.configP);
-    if (!configJ) {
+    int hasError = 0;
+    json_object *configJ = pyObjToJson(glue->api.configP, &hasError);
+    if (hasError) {
         errorMsg = "json incompatible config";
         goto OnErrorExit;
     }
@@ -391,8 +393,9 @@ static PyObject *GlueReply(PyObject *self, PyObject *argsP)
 
     for (long idx = 0; idx < count - 2; idx++) {
         slotP = PyTuple_GetItem(argsP, idx + 2);
-        slotJ = pyObjToJson(slotP);
-        if (!slotJ) {
+        int hasError = 0;
+        slotJ = pyObjToJson(slotP, &hasError);
+        if (hasError) {
             errorMsg = "(hoops) not json convertible response";
             goto OnErrorExit;
         }
@@ -424,8 +427,9 @@ static PyObject *GlueBindingLoad(PyObject *self, PyObject *argsP)
     if (!PyArg_ParseTuple(argsP, "O", &configP))
         goto OnErrorExit;
 
-    json_object *configJ = pyObjToJson(configP);
-    if (!configJ)
+    int hasError = 0;
+    json_object *configJ = pyObjToJson(configP, &hasError);
+    if (hasError)
         goto OnErrorExit;
 
     errorMsg = AfbBindingLoad(afbMain->binder.afb, configJ);
@@ -446,7 +450,8 @@ OnErrorExit:
 bool _convert_py_argument_to_afb_data(PyObject *pyArg, afb_data_t *out, int index)
 {
     if (pyArg == Py_None) {
-        if (afb_create_data_raw(out, NULL, NULL, 0, NULL, NULL) != 0) {
+        // None can be represented as JSON "null"
+        if (afb_create_data_raw(out, AFB_PREDEFINED_TYPE_JSON_C, NULL, 0, NULL, NULL) != 0) {
             PyErr_SetString(PyExc_RuntimeError, "Failed to create null parameter");
             return false;
         }
@@ -480,8 +485,9 @@ bool _convert_py_argument_to_afb_data(PyObject *pyArg, afb_data_t *out, int inde
         }
     }
     else if (PyDict_Check(pyArg) || PyList_Check(pyArg)) {
-        json_object *jobj = pyObjToJson(pyArg);
-        if (!jobj) {
+        int hasError = 0;
+        json_object *jobj = pyObjToJson(pyArg, &hasError);
+        if (hasError) {
             PyErr_SetString(PyExc_TypeError, "Failed to convert Python object to JSON");
             return false;
         }
@@ -690,8 +696,9 @@ static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
 
     // get response from PY and push them as afb-v4 object
     for (index = 0; index < count - 1; index++) {
-        json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP, index + 1));
-        if (!argsJ) {
+        int hasError = 0;
+        json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP, index + 1), &hasError);
+        if (hasError) {
             errorMsg = "invalid argument type";
             goto OnErrorExit;
         }
@@ -820,8 +827,9 @@ static PyObject *GlueVerbAdd(PyObject *self, PyObject *argsP)
     if (!glue || glue->magic != GLUE_API_MAGIC_TAG)
         goto OnErrorExit;
 
-    json_object *configJ = pyObjToJson(PyTuple_GetItem(argsP, 1));
-    if (!configJ)
+    int hasError = 0;
+    json_object *configJ = pyObjToJson(PyTuple_GetItem(argsP, 1), &hasError);
+    if (hasError)
         goto OnErrorExit;
 
     PyObject *userdataP = PyTuple_GetItem(argsP, 2);

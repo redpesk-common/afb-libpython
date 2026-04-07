@@ -172,7 +172,7 @@ void GlueApiVerbCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[]
                 slotP = PyTuple_GetItem(resultP,idx+1);
                 int hasError = 0;
                 slotJ = pyObjToJson(slotP, &hasError);
-                if (!hasError)
+                if (hasError)
                 {
                     errorMsg = "(hoops) not json convertible response";
                     goto OnErrorExit;

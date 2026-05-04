@@ -654,11 +654,6 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
         errorMsg = "api subcall fail";
         goto OnErrorExit;
     }
-    // subcall was refused
-    if (AFB_IS_BINDER_ERRNO(status)) {
-        errorMsg = afb_error_text(status);
-        goto OnErrorExit;
-    }
 
     // retreive response and build Python response
     PyObject *paramsP = PyTuple_New(2);

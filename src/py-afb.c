@@ -516,14 +516,29 @@ bool _convert_py_argument_to_afb_data(PyObject *pyArg, afb_data_t *out, int inde
     return true;
 }
 
+static void
+_unref_afb_params(afb_data_t *params, long count)
+{
+    for (long idx = 0; idx < count; idx++) {
+        if (params[idx]) {
+            afb_data_unref(params[idx]);
+            params[idx] = NULL;
+        }
+    }
+}
+
 static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "syntax: callasync(handle, api, verb, callback, context, ...)";
     long index = 0;
+    long params_count = 0;
+    GlueCallHandleT *handle = NULL;
+    PyObject *userdataP = NULL;
 
     // parse input arguments
     long count = PyTuple_GET_SIZE(argsP);
     afb_data_t params[count];
+    memset(params, 0, sizeof(params));
     if (count < 5)
         goto OnErrorExit;
 
@@ -544,19 +559,22 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
     if ((callbackP != Py_None) && !PyCallable_Check(callbackP))
         goto OnErrorExit;
 
-    PyObject *userdataP = PyTuple_GetItem(argsP, 4);
-    if (userdataP != Py_None)
+    userdataP = PyTuple_GetItem(argsP, 4);
+    if (userdataP == Py_None)
+        userdataP = NULL;
+    else
         Py_IncRef(userdataP);
 
     // retrieve subcall api argument(s)
     for (index = 0; index < count - 5; index++) {
         PyObject *pyArg = PyTuple_GetItem(argsP, index + 5);
         if (!_convert_py_argument_to_afb_data(pyArg, &params[index], index + 5)) {
-            return NULL;
+            errorMsg = "invalid argument type";
+            goto OnErrorExit;
         }
     }
+    params_count = index;
 
-    GlueCallHandleT *handle = NULL;
     if (callbackP != Py_None) {
         handle = calloc(1, sizeof(GlueCallHandleT));
         if (handle == NULL) {
@@ -568,6 +586,7 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
         handle->async.callbackP = callbackP;
         handle->async.userdataP = userdataP;
         Py_IncRef(handle->async.callbackP);
+        userdataP = NULL;
     }
 
     switch (glue->magic) {
@@ -585,9 +604,19 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
                                             handle ? GlueApiSubcallCb : NULL, (void *)handle);
         Py_END_ALLOW_THREADS
     }
+
+    _unref_afb_params(params, params_count);
+    Py_XDECREF(userdataP);
     Py_RETURN_NONE;
 
 OnErrorExit:
+    _unref_afb_params(params, params_count);
+    Py_XDECREF(userdataP);
+    if (handle) {
+        Py_XDECREF(handle->async.callbackP);
+        Py_XDECREF(handle->async.userdataP);
+        free(handle);
+    }
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;
@@ -681,6 +710,8 @@ static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
     long count = PyTuple_GET_SIZE(argsP);
     afb_data_t params[count];
     long index = 0;
+    long params_count = 0;
+    memset(params, 0, sizeof(params));
 
     if (count < 1)
         goto OnErrorExit;
@@ -699,19 +730,21 @@ static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
         afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0,
                             (void *)json_object_put, argsJ);
     }
+    params_count = index;
 
     int status;
     Py_BEGIN_ALLOW_THREADS status = afb_event_push(evtid, (int)index, params);
     Py_END_ALLOW_THREADS
 
-        if (status < 0)
-    {
+    _unref_afb_params(params, params_count);
+    if (status < 0) {
         errorMsg = "afb_event_push fail sending event";
         goto OnErrorExit;
     }
     Py_RETURN_NONE;
 
 OnErrorExit:
+    _unref_afb_params(params, params_count);
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;

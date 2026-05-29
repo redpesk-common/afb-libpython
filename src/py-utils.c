@@ -61,6 +61,15 @@ afb_api_t GlueGetApi(GlueHandleT *glue) {
     return afbApi;
 }
 
+static inline void
+PyAfbDataUnref(afb_data_t *data)
+{
+    if (data != NULL && *data != NULL) {
+        afb_data_unref(*data);
+        *data = NULL;
+    }
+}
+
 // retreive subcall response and build PY response
 const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, const afb_data_t *replies) {
     const char *errorMsg=NULL;
@@ -75,7 +84,7 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                     if (value && value[0]) {
                         PyTuple_SetItem(resultP, idx+start, PyUnicode_FromString(value));
                     } else {
-                        PyTuple_SetItem(resultP, idx+start, Py_None);
+                        PyTuple_SetItem(resultP, idx+start, AFB_Py_NewRef(Py_None));
                     }
                     break;
                 }
@@ -110,7 +119,7 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                 }
 
                 case  Afb_Typeid_Predefined_Json: {
-                    afb_data_t data;
+                    afb_data_t data = NULL;
                     json_object *valueJ;
                     int err;
 
@@ -129,17 +138,17 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                     if (valueJ) {
                         PyTuple_SetItem(resultP, idx+start, jsonToPyObj(valueJ));
                     } else {
-                        PyTuple_SetItem(resultP, idx+start, Py_None);
+                        PyTuple_SetItem(resultP, idx+start, AFB_Py_NewRef(Py_None));
                     }
                     break;
                 }
                 default:
-                    afb_data_t cvt;
+                    afb_data_t cvt = NULL;
 
                     // 1) try convert to JSON-C
                     if (afb_data_convert(replies[idx], &afb_type_predefined_json_c, &cvt) >= 0) {
                         json_object *valueJ = (json_object*)afb_data_ro_pointer(cvt);
-                        PyTuple_SetItem(resultP, idx+start, valueJ ? jsonToPyObj(valueJ) : Py_None);
+                        PyTuple_SetItem(resultP, idx+start, valueJ ? jsonToPyObj(valueJ) : AFB_Py_NewRef(Py_None));
                         afb_data_unref(cvt);
                         break;
                     }
@@ -147,7 +156,7 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                     // 2) try convert to STRINGZ
                     if (afb_data_convert(replies[idx], &afb_type_predefined_stringz, &cvt) >= 0) {
                         const char *s = (const char*)afb_data_ro_pointer(cvt);
-                        PyTuple_SetItem(resultP, idx+start, s ? PyUnicode_FromString(s) : Py_None);
+                        PyTuple_SetItem(resultP, idx+start, s ? PyUnicode_FromString(s) : AFB_Py_NewRef(Py_None));
                         afb_data_unref(cvt);
                         break;
                     }

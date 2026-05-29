@@ -55,33 +55,32 @@ void PyResponseFreecB(PyObject *self)
 
 static PyObject *PyResponseNewCb(PyTypeObject *type, PyObject *argsP, PyObject *kwds)
 {
-    int status;
-
     PyResponseObjectT *response = (PyResponseObjectT *)type->tp_alloc(type, 0);
     if (!response)
-        goto OnErrorExit;
+        return NULL;
 
-    status = PyArg_ParseTuple(argsP, "OO", &response->statusP, &response->argsP);
-    if (status == 0)
-        goto OnErrorExit;
-    Py_INCREF(response->statusP);
-    Py_INCREF(response->argsP);
+    response->statusP = NULL;
+    response->argsP = NULL;
     return (PyObject *)response;
-
-OnErrorExit:
-    PyErr_SetString(PyExc_RuntimeError, "syntax response(status, args)");
-    return NULL;
 }
 
 static int GlueRepInitProc(PyObject *self, PyObject *argsP, PyObject *kwds)
 {
     int status;
+    PyObject *statusP = NULL;
+    PyObject *replyArgsP = NULL;
     PyResponseObjectT *response = (PyResponseObjectT *)self;
-    status = PyArg_ParseTuple(argsP, "OO", &response->statusP, &response->argsP);
+
+    status = PyArg_ParseTuple(argsP, "OO", &statusP, &replyArgsP);
     if (status == 0)
         goto OnErrorExit;
-    Py_INCREF(response->statusP);
-    Py_INCREF(response->argsP);
+
+    Py_INCREF(statusP);
+    Py_INCREF(replyArgsP);
+    Py_XDECREF(response->statusP);
+    Py_XDECREF(response->argsP);
+    response->statusP = statusP;
+    response->argsP = replyArgsP;
     return 0;
 
 OnErrorExit:

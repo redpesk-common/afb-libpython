@@ -457,19 +457,20 @@ json_object *pyObjToJson(PyObject* objP, int* hasError)
 
     // python function is not json compatible, also we keep it an object userdata context
     else if (PyCallable_Check(objP)) {
-            const char *funcname;
+            const char *funcname = "UnknownCallbackFuncName";
             PyObject *funcnameP= PyDict_GetItemString(objP, "__name__");
             if (funcnameP) {
-                funcname= strdup(PyUnicode_AsUTF8(funcnameP));
-            }
-            else {
-                // Note: should this be a fatal error?
-                funcname="UnknownCallbackFuncName";
+                funcname = PyUnicode_AsUTF8(funcnameP);
+                if (!funcname) {
+                    if (hasError)
+                        *hasError = 1;
+                    return NULL;
+                }
             }
             valueJ = json_object_new_string(funcname);
             json_object_set_userdata(valueJ, objP, PyFreeJsonCtx);
             Py_IncRef(objP);
-            if (funcnameP) Py_DecRef(funcnameP);
+            /* PyDict_GetItemString() returns a borrowed reference. */
     }
     else {
         LIBAFB_ERROR("pyObjToJson: Unsupported value=%s, converting to null", PyUnicode_AsUTF8(objP));
@@ -485,7 +486,7 @@ json_object *pyObjToJson(PyObject* objP, int* hasError)
 // Move from json_object to pythopn object representation
 PyObject * jsonToPyObj(json_object *argsJ)
 {
-    PyObject *resultP;
+    PyObject *resultP = NULL;
     int err;
 
     json_type jtype = json_object_get_type(argsJ);
@@ -494,14 +495,21 @@ PyObject * jsonToPyObj(json_object *argsJ)
     case json_type_object:
     {
         resultP= PyDict_New();
+        if (!resultP)
+            goto OnErrorExit;
+
         json_object_object_foreach(argsJ, key, valJ)
         {
             PyObject *valP= jsonToPyObj(valJ);
             PyObject *keyP= PyUnicode_FromString(key);
-            if (!valP) {
+            if (!valP || !keyP) {
+                Py_XDECREF(valP);
+                Py_XDECREF(keyP);
                 goto OnErrorExit;
             }
             err= PyDict_SetItem (resultP, keyP, valP);
+            Py_DECREF(keyP);
+            Py_DECREF(valP);
             if (err) {
                 goto OnErrorExit;
             }
@@ -512,10 +520,15 @@ PyObject * jsonToPyObj(json_object *argsJ)
     {
         int length = (int)json_object_array_length(argsJ);
         resultP=PyList_New(length);
+        if (!resultP)
+            goto OnErrorExit;
+
         for (int idx = 0; idx < length; idx++)
         {
             json_object *valJ = json_object_array_get_idx(argsJ, idx);
             PyObject *valP= jsonToPyObj(valJ);
+            if (!valP)
+                goto OnErrorExit;
             PyList_SetItem(resultP, idx, valP);
         }
         break;
@@ -543,6 +556,7 @@ PyObject * jsonToPyObj(json_object *argsJ)
     return resultP;
 
 OnErrorExit:
+    Py_XDECREF(resultP);
     return NULL;
 }
 

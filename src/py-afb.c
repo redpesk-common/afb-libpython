@@ -293,7 +293,10 @@ static PyObject *GlueLoopStart(PyObject *self, PyObject *argsP)
 
     if (count >= 3) {
         async->userdataP = PyTuple_GetItem(argsP, 2);
-        Py_IncRef(async->userdataP);
+        if (async->userdataP == Py_None)
+            async->userdataP = NULL;
+        else if (async->userdataP)
+            Py_IncRef(async->userdataP);
     }
 
     // main loop only return when binder startup func return status!=0
@@ -1018,6 +1021,8 @@ static PyObject *GlueEvtHandler(PyObject *self, PyObject *argsP)
     Py_IncRef(handle->event.async.callbackP);
 
     handle->event.async.userdataP = (count < 3) ? NULL : PyTuple_GetItem(argsP, 2);
+    if (handle->event.async.userdataP == Py_None)
+        handle->event.async.userdataP = NULL;
     if (handle->event.async.userdataP)
         Py_IncRef(handle->event.async.userdataP);
 
@@ -1087,7 +1092,9 @@ static PyObject *GlueTimerNew(PyObject *self, PyObject *argsP)
     Py_IncRef(handle->timer.configP);
 
     handle->timer.async.userdataP = PyTuple_GetItem(argsP, 2);
-    if (handle->timer.async.userdataP != Py_None)
+    if (handle->timer.async.userdataP == Py_None)
+        handle->timer.async.userdataP = NULL;
+    else
         Py_IncRef(handle->timer.async.userdataP);
 
     // retreive API from py handle
@@ -1191,7 +1198,7 @@ static PyObject *GlueJobPost(PyObject *self, PyObject *argsP)
     PyObject *uidP = PyDict_GetItemString(handle->async.callbackP, "__name__");
     if (uidP)
         handle->async.uid = pyObjToStr(uidP);
-    Py_DecRef(uidP);
+    /* PyDict_GetItemString() returns a borrowed reference. */
 
     long delay = PyLong_AsLong(PyTuple_GetItem(argsP, 2));
     if (delay <= 0)
@@ -1199,7 +1206,9 @@ static PyObject *GlueJobPost(PyObject *self, PyObject *argsP)
 
     if (PyTuple_GET_SIZE(argsP) > 3) {
         handle->async.userdataP = PyTuple_GetItem(argsP, 3);
-        if (handle->async.userdataP != Py_None)
+        if (handle->async.userdataP == Py_None)
+            handle->async.userdataP = NULL;
+        else
             Py_IncRef(handle->async.userdataP);
     }
 
@@ -1258,7 +1267,7 @@ PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     PyObject *uidP = PyDict_GetItemString(handle->job.async.callbackP, "__name__");
     if (uidP)
         handle->job.async.uid = pyObjToStr(uidP);
-    Py_DecRef(uidP);
+    /* PyDict_GetItemString() returns a borrowed reference. */
 
     // arg index 2: timeout
     int timeout = (int)PyLong_AsLong(PyTuple_GetItem(argsP, 2));
@@ -1268,7 +1277,9 @@ PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     // arg index 3: userdata
     if (PyTuple_GET_SIZE(argsP) > 3) {
         handle->job.async.userdataP = PyTuple_GetItem(argsP, 3);
-        if (handle->job.async.userdataP != Py_None)
+        if (handle->job.async.userdataP == Py_None)
+            handle->job.async.userdataP = NULL;
+        else
             Py_IncRef(handle->job.async.userdataP);
     }
 

@@ -627,9 +627,17 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     const char *errorMsg = "syntax: callsync(handle, api, verb, ...)";
     int err, status;
     long index = 0, count = PyTuple_GET_SIZE(argsP);
+    long params_count = 0;
+    int params_handed_to_libafb = 0;
     afb_data_t params[count];
     unsigned nreplies = SUBCALL_MAX_RPLY;
     afb_data_t replies[SUBCALL_MAX_RPLY];
+    PyObject *paramsP = NULL;
+    PyObject *replyP = NULL;
+    PyObject *resultP = NULL;
+
+    memset(params, 0, sizeof(params));
+    memset(replies, 0, sizeof(replies));
 
     // parse input arguments
     if (count < 3)
@@ -651,9 +659,11 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     for (index = 0; index < count - 3; index++) {
         PyObject *pyArg = PyTuple_GetItem(argsP, index + 3);
         if (!_convert_py_argument_to_afb_data(pyArg, &params[index], index + 3)) {
-            return NULL;
+            errorMsg = "invalid argument type";
+            goto OnErrorExit;
         }
     }
+    params_count = index;
 
     switch (glue->magic) {
     case GLUE_RQT_MAGIC_TAG:
@@ -673,8 +683,16 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
     }
 
+    /*
+     * The synchronous AFB call owns or tracks the submitted parameters after
+     * the call boundary. Do not release them locally after the native call has
+     * accepted them.
+     */
+    params_handed_to_libafb = 1;
+    params_count = 0;
+
     if (PyErr_Occurred()) {
-        // Abort and raise the exception, if any
+        _unref_afb_params(replies, nreplies);
         return NULL;
     }
     if (err) {
@@ -684,21 +702,35 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     }
 
     // retreive response and build Python response
-    PyObject *paramsP = PyTuple_New(2);
-    PyTuple_SetItem(paramsP, 0, PyLong_FromLong(status));
+    paramsP = PyTuple_New(2);
+    if (!paramsP)
+        goto OnErrorExit;
 
-    PyObject *replyP = PyTuple_New(nreplies);
-    PyTuple_SetItem(paramsP, 1, replyP);
-    errorMsg = PyPushAfbReply(replyP, 0, nreplies, replies);
+    if (PyTuple_SetItem(paramsP, 0, PyLong_FromLong(status)) < 0)
+        goto OnErrorExit;
+
+    replyP = PyTuple_New(nreplies);
+    if (!replyP)
+        goto OnErrorExit;
+    if (PyTuple_SetItem(paramsP, 1, replyP) < 0)
+        goto OnErrorExit;
+    replyP = NULL;
+
+    errorMsg = PyPushAfbReply(PyTuple_GetItem(paramsP, 1), 0, nreplies, replies);
+    _unref_afb_params(replies, nreplies);
     if (errorMsg)
         goto OnErrorExit;
 
-    PyObject *resultP = PyObject_CallObject((PyObject *)&PyResponseType, paramsP);
-    Py_DecRef(replyP);
-    Py_DecRef(paramsP);
+    resultP = PyObject_CallObject((PyObject *)&PyResponseType, paramsP);
+    Py_DECREF(paramsP);
     return resultP;
 
 OnErrorExit:
+    if (!params_handed_to_libafb)
+        _unref_afb_params(params, params_count);
+    _unref_afb_params(replies, nreplies);
+    Py_XDECREF(replyP);
+    Py_XDECREF(paramsP);
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;

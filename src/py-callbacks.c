@@ -284,21 +284,27 @@ int GlueStartupCb(void *config, void *userdata)
     {
         PyGILState_STATE state = PyGILState_Ensure();
 
-        PyObject *argsP;
-        argsP= PyTuple_New(2);
+        PyObject *argsP= PyTuple_New(2);
+        if (!argsP) {
+            PyGILState_Release(state);
+            goto OnErrorExit;
+        }
 
         PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, NULL));
 
-        if (!async->userdataP) PyTuple_SetItem (argsP, 1, Py_None);
-        else PyTuple_SetItem (argsP, 1, async->userdataP);
+        if (!async->userdataP) PyTuple_SetItem (argsP, 1, AFB_Py_NewRef(Py_None));
+        else PyTuple_SetItem (argsP, 1, AFB_Py_NewRef(async->userdataP));
 
         PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
+        Py_DECREF(argsP);
         if (!resultP) {
             PyGILState_Release(state);
             goto OnErrorExit;
         }
         status= (int)PyLong_AsLong(resultP);
+        Py_DECREF(resultP);
         Py_DECREF (async->callbackP);
+        Py_XDECREF(async->userdataP);
         free (async);
 
         PyGILState_Release(state);
@@ -365,6 +371,8 @@ void GlueInfoCb(afb_req_t afbRqt, unsigned nparams, afb_data_t const params[])
 
 static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *label, int status, unsigned nreplies, afb_data_t const replies[]) {
     const char *errorMsg = "internal-error";
+    PyObject *argsP = NULL;
+    PyObject *resultP = NULL;
 
     PyGILState_STATE state = PyGILState_Ensure();
 
@@ -375,32 +383,34 @@ static void GluePcallFunc (GlueHandleT *glue, GlueAsyncCtxT *async, const char *
     }
 
     // prepare calling argument list
-    PyObject *argsP= PyTuple_New(nreplies+3);
+    argsP= PyTuple_New(nreplies+3);
+    if (!argsP) goto OnErrorExit;
     glue->usage++;
     PyTuple_SetItem (argsP, 0, PyCapsule_New(glue, GLUE_AFB_UID, GlueFreeCapsuleCb));
     if (label) PyTuple_SetItem (argsP, 1, PyUnicode_FromString(label));
     else PyTuple_SetItem (argsP, 1, PyLong_FromLong((long)status));
 
-    // add userdata if any (Fulup Py_IncRef needed ???)
-    if (!async->userdataP) PyTuple_SetItem (argsP, 2, Py_None);
-    else {
-        PyTuple_SetItem (argsP, 2, async->userdataP);
-        Py_IncRef(async->userdataP);
-    }
+    // add userdata if any
+    if (!async->userdataP) PyTuple_SetItem (argsP, 2, AFB_Py_NewRef(Py_None));
+    else PyTuple_SetItem (argsP, 2, AFB_Py_NewRef(async->userdataP));
 
     // push event data if any
     errorMsg= PyPushAfbReply (argsP, 3, nreplies, replies);
     if (errorMsg) goto OnErrorExit;
 
-    PyObject *resultP= PyObject_Call (async->callbackP, argsP, NULL);
+    resultP= PyObject_Call (async->callbackP, argsP, NULL);
     if (!resultP) {
         errorMsg="function-fail";
         goto OnErrorExit;
     }
+    Py_DECREF(resultP);
+    Py_DECREF(argsP);
     PyGILState_Release(state);
     return;
 
 OnErrorExit: {
+    Py_XDECREF(resultP);
+    Py_XDECREF(argsP);
     const char*uid= async->uid;
     json_object *errorJ = PyJsonDbg(errorMsg);
     if (glue->magic != GLUE_RQT_MAGIC_TAG)  GLUE_AFB_WARNING(glue, "uid=%s info=%s error=%s", uid, errorMsg,  json_object_get_string(errorJ));
@@ -499,10 +509,8 @@ void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_
     // add userdata if any
     if (!async->userdataP)
         PyTuple_SetItem(argsP, 2, AFB_Py_NewRef(Py_None));
-    else {
-        PyTuple_SetItem(argsP, 2, async->userdataP);
-        Py_IncRef(async->userdataP);
-    }
+    else
+        PyTuple_SetItem(argsP, 2, AFB_Py_NewRef(async->userdataP));
 
     // push event data if any
     errorMsg = PyPushAfbReply(argsP, 3, nparams, params);
@@ -520,6 +528,7 @@ void GlueEventCb (void *userdata, const char *label, unsigned nparams, afb_data_
     return;
 
 OnErrorExit: {
+    Py_XDECREF(argsP);
     const char *uid = async->uid;
     json_object *errorJ = PyJsonDbg(errorMsg);
     if (glue->magic != GLUE_RQT_MAGIC_TAG)

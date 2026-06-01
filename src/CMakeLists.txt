@@ -16,16 +16,21 @@
 
 find_package(PkgConfig REQUIRED)
 
-find_package(Python3 COMPONENTS Interpreter Development)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 
-pkg_check_modules(deps REQUIRED python3 libafb>=5.1.0 libafb-binder)
+# Do not request Python through pkg-config here. The Python pkg-config module
+# may point to the system Python version while CMake selected a different
+# interpreter for the extension module. Python include/link flags must come
+# from find_package(Python3) to keep the built extension ABI-compatible with
+# the target interpreter.
+pkg_check_modules(deps REQUIRED libafb>=5.1.0 libafb-binder)
 
 set(DLDIR "${Python3_SITEARCH}" CACHE STRING "install dir for python native module")
 
     # Define project Targets
 Python3_add_library(libafb MODULE WITH_SOABI py-afb.c py-callbacks.c py-utils.c)
 target_compile_options(libafb PRIVATE ${deps_CFLAGS})
-target_link_libraries(libafb PRIVATE ${deps_LDFLAGS})
+target_link_libraries(libafb PRIVATE Python3::Module ${deps_LDFLAGS})
 
 set_target_properties(libafb PROPERTIES
 	IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/*.so

@@ -37,39 +37,42 @@
 #include "tupleobject.h"
 
 // global afbMain glue
-GlueHandleT *afbMain = NULL;
+GlueHandleT* afbMain = NULL;
 
 typedef struct
 {
-    PyObject_HEAD PyObject *statusP;
-    PyObject *argsP;
+    PyObject_HEAD PyObject* statusP;
+    PyObject* argsP;
 } PyResponseObjectT;
 
-void PyResponseFreecB(PyObject *self)
+void
+PyResponseFreecB(PyObject* self)
 {
-    PyResponseObjectT *reply = (PyResponseObjectT *)self;
+    PyResponseObjectT* reply = (PyResponseObjectT*)self;
     Py_XDECREF(reply->statusP);
     Py_XDECREF(reply->argsP);
     Py_TYPE(reply)->tp_free(reply);
 }
 
-static PyObject *PyResponseNewCb(PyTypeObject *type, PyObject *argsP, PyObject *kwds)
+static PyObject*
+PyResponseNewCb(PyTypeObject* type, PyObject* argsP, PyObject* kwds)
 {
-    PyResponseObjectT *response = (PyResponseObjectT *)type->tp_alloc(type, 0);
+    PyResponseObjectT* response = (PyResponseObjectT*)type->tp_alloc(type, 0);
     if (!response)
         return NULL;
 
     response->statusP = NULL;
     response->argsP = NULL;
-    return (PyObject *)response;
+    return (PyObject*)response;
 }
 
-static int GlueRepInitProc(PyObject *self, PyObject *argsP, PyObject *kwds)
+static int
+GlueRepInitProc(PyObject* self, PyObject* argsP, PyObject* kwds)
 {
     int status;
-    PyObject *statusP = NULL;
-    PyObject *replyArgsP = NULL;
-    PyResponseObjectT *response = (PyResponseObjectT *)self;
+    PyObject* statusP = NULL;
+    PyObject* replyArgsP = NULL;
+    PyResponseObjectT* response = (PyResponseObjectT*)self;
 
     status = PyArg_ParseTuple(argsP, "OO", &statusP, &replyArgsP);
     if (status == 0)
@@ -89,9 +92,17 @@ OnErrorExit:
 }
 
 static PyMemberDef PyResponseMembers[] = {
-    {"status", T_OBJECT_EX, offsetof(PyResponseObjectT, statusP), 0, "status number"},
-    {"args", T_OBJECT_EX, offsetof(PyResponseObjectT, argsP), 0, "reply datas"},
-    {NULL} /* Sentinel */
+    { "status",
+      T_OBJECT_EX,
+      offsetof(PyResponseObjectT, statusP),
+      0,
+      "status number" },
+    { "args",
+      T_OBJECT_EX,
+      offsetof(PyResponseObjectT, argsP),
+      0,
+      "reply datas" },
+    { NULL } /* Sentinel */
 };
 
 static PyTypeObject PyResponseType = {
@@ -106,39 +117,45 @@ static PyTypeObject PyResponseType = {
     .tp_members = PyResponseMembers,
 };
 
-static PyObject *GluePrintInfo(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePrintInfo(PyObject* self, PyObject* argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_INFO, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject *GluePrintError(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePrintError(PyObject* self, PyObject* argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_ERROR, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject *GluePrintWarning(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePrintWarning(PyObject* self, PyObject* argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_WARNING, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject *GluePrintNotice(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePrintNotice(PyObject* self, PyObject* argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_NOTICE, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject *GluePrintDebug(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePrintDebug(PyObject* self, PyObject* argsP)
 {
     PyPrintMsg(AFB_SYSLOG_LEVEL_DEBUG, self, argsP);
     Py_RETURN_NONE;
 }
 
-static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueBinderConf(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: binder(config)";
+    const char* errorMsg = "syntax: binder(config)";
     if (afbMain != NULL) {
         errorMsg = "(hoops) binder(config) already loaded";
         goto OnErrorExit;
@@ -153,7 +170,7 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
     afbMain->magic = GLUE_BINDER_MAGIC_TAG;
 
 #if PY_MINOR_VERSION < 7
-    PyEval_InitThreads();  // from 3.7 this is useless
+    PyEval_InitThreads(); // from 3.7 this is useless
 #endif
 
     if (!PyArg_ParseTuple(argsP, "O", &afbMain->binder.configP)) {
@@ -161,18 +178,20 @@ static PyObject *GlueBinderConf(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
     }
     int hasError = 0;
-    json_object *configJ = pyObjToJson(afbMain->binder.configP, &hasError);
+    json_object* configJ = pyObjToJson(afbMain->binder.configP, &hasError);
     if (hasError) {
+        json_object_put(configJ);
         errorMsg = "json incompatible config";
         goto OnErrorExit;
     }
 
     errorMsg = AfbBinderConfig(configJ, &afbMain->binder.afb, afbMain);
+    json_object_put(configJ);
     if (errorMsg)
         goto OnErrorExit;
 
     // return afbMain glue as a Python capsule glue
-    PyObject *capsule = PyCapsule_New(afbMain, GLUE_AFB_UID, NULL);
+    PyObject* capsule = PyCapsule_New(afbMain, GLUE_AFB_UID, NULL);
     return capsule;
 
 OnErrorExit:
@@ -181,18 +200,24 @@ OnErrorExit:
     return NULL;
 }
 
-typedef enum { addApiAdd, addApiImport, addApiCreate } addApiHow;
-
-static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
+typedef enum
 {
-    const char *errorMsg = "syntax: apiadd (config)";
+    addApiAdd,
+    addApiImport,
+    addApiCreate
+} addApiHow;
+
+static PyObject*
+addApi(PyObject* self, PyObject* argsP, addApiHow how)
+{
+    const char* errorMsg = "syntax: apiadd (config)";
 
     if (!afbMain) {
         errorMsg = "Should use libafb.binder() first";
         goto OnErrorExit;
     }
 
-    GlueHandleT *glue = calloc(1, sizeof(GlueHandleT));
+    GlueHandleT* glue = calloc(1, sizeof(GlueHandleT));
     if (glue == NULL) {
         errorMsg = "out of memory";
         goto OnErrorExit;
@@ -202,22 +227,21 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
     if (!PyArg_ParseTuple(argsP, "O", &glue->api.configP))
         goto OnErrorExit;
     int hasError = 0;
-    json_object *configJ = pyObjToJson(glue->api.configP, &hasError);
+    json_object* configJ = pyObjToJson(glue->api.configP, &hasError);
     if (hasError) {
         errorMsg = "json incompatible config";
         goto OnErrorExit;
     }
 
     if (how == addApiAdd) {
-        json_object *afbApiUri = json_object_object_get(configJ, "uri");
+        json_object* afbApiUri = json_object_object_get(configJ, "uri");
         how = afbApiUri ? addApiImport : addApiCreate;
     }
 
     if (how == addApiImport) {
         // imported shadow api
         errorMsg = AfbApiImport(afbMain->binder.afb, configJ);
-    }
-    else {
+    } else {
         // check if control python api function is defined
         afb_api_callback_x4_t usrApiCb = NULL;
         glue->api.ctrlCb = PyDict_GetItemString(glue->api.configP, "control");
@@ -228,16 +252,21 @@ static PyObject *addApi(PyObject *self, PyObject *argsP, addApiHow how)
             }
             usrApiCb = GlueCtrlCb;
         }
-        Py_BEGIN_ALLOW_THREADS errorMsg =
-            AfbApiCreate(afbMain->binder.afb, configJ, &glue->api.afb, usrApiCb, GlueInfoCb,
-                         GlueApiVerbCb, GlueApiEventCb, glue);
+        Py_BEGIN_ALLOW_THREADS errorMsg = AfbApiCreate(afbMain->binder.afb,
+                                                       configJ,
+                                                       &glue->api.afb,
+                                                       usrApiCb,
+                                                       GlueInfoCb,
+                                                       GlueApiVerbCb,
+                                                       GlueApiEventCb,
+                                                       glue);
         Py_END_ALLOW_THREADS
     }
     if (errorMsg)
         goto OnErrorExit;
 
     // return api glue
-    PyObject *capsule = PyCapsule_New(glue, GLUE_AFB_UID, NULL);
+    PyObject* capsule = PyCapsule_New(glue, GLUE_AFB_UID, NULL);
     return capsule;
 
 OnErrorExit:
@@ -247,38 +276,43 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueApiAdd(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueApiAdd(PyObject* self, PyObject* argsP)
 {
     return addApi(self, argsP, addApiAdd);
 }
 
-static PyObject *GlueApiImport(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueApiImport(PyObject* self, PyObject* argsP)
 {
     return addApi(self, argsP, addApiImport);
 }
 
-static PyObject *GlueApiCreate(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueApiCreate(PyObject* self, PyObject* argsP)
 {
     return addApi(self, argsP, addApiCreate);
 }
 
 // this routine execute within mainloop context when binder is ready to go
-static PyObject *GlueLoopStart(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueLoopStart(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: loopstart(binder,[callback],[userdata])";
+    const char* errorMsg = "syntax: loopstart(binder,[callback],[userdata])";
     int status;
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count < 1 || count > 3)
         goto OnErrorExit;
 
-    GlueAsyncCtxT *async = calloc(1, sizeof(GlueAsyncCtxT));
+    GlueAsyncCtxT* async = calloc(1, sizeof(GlueAsyncCtxT));
     if (async == NULL) {
         errorMsg = "out of memory";
         goto OnErrorExit;
     }
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || !GlueGetApi(glue))
         goto OnErrorExit;
 
@@ -301,10 +335,11 @@ static PyObject *GlueLoopStart(PyObject *self, PyObject *argsP)
 
     // main loop only return when binder startup func return status!=0
     GLUE_AFB_NOTICE(afbMain, "Entering binder mainloop");
-    Py_BEGIN_ALLOW_THREADS status = AfbBinderStart(afbMain->binder.afb, async, GlueStartupCb, glue);
+    Py_BEGIN_ALLOW_THREADS status =
+      AfbBinderStart(afbMain->binder.afb, async, GlueStartupCb, glue);
     Py_END_ALLOW_THREADS
 
-        return PyLong_FromLong((long)status);
+      return PyLong_FromLong((long)status);
 
 OnErrorExit:
     GLUE_DBG_ERROR(afbMain, errorMsg);
@@ -313,30 +348,31 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueGetConfig(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueGetConfig(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: config(handle[,key])";
+    const char* errorMsg = "syntax: config(handle[,key])";
     PyObject *capsuleP, *configP, *resultP, *slotP, *keyP = NULL;
     if (!PyArg_ParseTuple(argsP, "O|O", &capsuleP, &keyP))
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(capsuleP, GLUE_AFB_UID);
+    GlueHandleT* glue = PyCapsule_GetPointer(capsuleP, GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
     switch (glue->magic) {
-    case GLUE_API_MAGIC_TAG:
-        configP = glue->api.configP;
-        break;
-    case GLUE_BINDER_MAGIC_TAG:
-        configP = glue->binder.configP;
-        break;
-    case GLUE_TIMER_MAGIC_TAG:
-        configP = glue->timer.configP;
-        break;
-    default:
-        errorMsg = "GlueGetConfig: unsupported py/afb handle";
-        goto OnErrorExit;
+        case GLUE_API_MAGIC_TAG:
+            configP = glue->api.configP;
+            break;
+        case GLUE_BINDER_MAGIC_TAG:
+            configP = glue->binder.configP;
+            break;
+        case GLUE_TIMER_MAGIC_TAG:
+            configP = glue->timer.configP;
+            break;
+        default:
+            errorMsg = "GlueGetConfig: unsupported py/afb handle";
+            goto OnErrorExit;
     }
 
     if (!configP) {
@@ -347,14 +383,12 @@ static PyObject *GlueGetConfig(PyObject *self, PyObject *argsP)
     if (!keyP) {
         resultP = configP;
         Py_INCREF(resultP);
-    }
-    else {
+    } else {
         slotP = PyDict_GetItem(configP, keyP);
         if (!slotP) {
             Py_INCREF(Py_None);
             resultP = Py_None;
-        }
-        else {
+        } else {
             resultP = slotP;
             Py_INCREF(resultP);
         }
@@ -368,24 +402,25 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueReply(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueReply(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: reply(rqt, status, [arg1 ... argn])";
-    PyObject *slotP;
+    const char* errorMsg = "syntax: reply(rqt, status, [arg1 ... argn])";
+    PyObject* slotP;
     long status, count = 0;
 
     count = PyTuple_GET_SIZE(argsP);
     afb_data_t reply[count];
 
     slotP = PyTuple_GetItem(argsP, 0);
-    GlueHandleT *glue = PyCapsule_GetPointer(slotP, GLUE_AFB_UID);
+    GlueHandleT* glue = PyCapsule_GetPointer(slotP, GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC_TAG)
         goto OnErrorExit0;
 
     if (count < 2)
         goto OnErrorExit;
 
-    json_object *slotJ;
+    json_object* slotJ;
     slotP = PyTuple_GetItem(argsP, 1);
     if (!PyLong_Check(slotP)) {
         errorMsg = "syntax: invalid status should be integer";
@@ -401,8 +436,12 @@ static PyObject *GlueReply(PyObject *self, PyObject *argsP)
             errorMsg = "(hoops) not json convertible response";
             goto OnErrorExit;
         }
-        afb_create_data_raw(&reply[idx], AFB_PREDEFINED_TYPE_JSON_C, slotJ, 0,
-                            (void *)json_object_put, slotJ);
+        afb_create_data_raw(&reply[idx],
+                            AFB_PREDEFINED_TYPE_JSON_C,
+                            slotJ,
+                            0,
+                            (void*)json_object_put,
+                            slotJ);
     }
 
     // respond request and free ressources.
@@ -411,9 +450,13 @@ static PyObject *GlueReply(PyObject *self, PyObject *argsP)
 
 OnErrorExit: {
     afb_data_t reply;
-    json_object *errorJ = PyJsonDbg(errorMsg);
+    json_object* errorJ = PyJsonDbg(errorMsg);
     GLUE_AFB_WARNING(glue, "python=%s", json_object_get_string(errorJ));
-    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, errorJ, 0, (void *)json_object_put,
+    afb_create_data_raw(&reply,
+                        AFB_PREDEFINED_TYPE_JSON_C,
+                        errorJ,
+                        0,
+                        (void*)json_object_put,
                         errorJ);
     GlueAfbReply(glue, -1, 1, &reply);
 }
@@ -421,20 +464,24 @@ OnErrorExit0:
     Py_RETURN_NONE;
 }
 
-static PyObject *GlueBindingLoad(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueBindingLoad(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: binding(config)";
-    PyObject *configP;
+    const char* errorMsg = "syntax: binding(config)";
+    PyObject* configP;
 
     if (!PyArg_ParseTuple(argsP, "O", &configP))
         goto OnErrorExit;
 
     int hasError = 0;
-    json_object *configJ = pyObjToJson(configP, &hasError);
-    if (hasError)
+    json_object* configJ = pyObjToJson(configP, &hasError);
+    if (hasError) {
+        json_object_put(configJ);
         goto OnErrorExit;
+    }
 
     errorMsg = AfbBindingLoad(afbMain->binder.afb, configJ);
+    json_object_put(configJ);
     if (errorMsg)
         goto OnErrorExit;
 
@@ -449,69 +496,84 @@ OnErrorExit:
 // ------------------------------------------------------------
 // Conversion of a PyObject* to afb_data_t
 // ------------------------------------------------------------
-bool _convert_py_argument_to_afb_data(PyObject *pyArg, afb_data_t *out, int index)
+bool
+_convert_py_argument_to_afb_data(PyObject* pyArg, afb_data_t* out, int index)
 {
     if (pyArg == Py_None) {
         // None can be represented as JSON "null"
-        if (afb_create_data_raw(out, AFB_PREDEFINED_TYPE_JSON_C, NULL, 0, NULL, NULL) != 0) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create null parameter");
+        if (afb_create_data_raw(
+              out, AFB_PREDEFINED_TYPE_JSON_C, NULL, 0, NULL, NULL) != 0) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create null parameter");
             return false;
         }
-    }
-    else if (PyFloat_Check(pyArg)) {
+    } else if (PyFloat_Check(pyArg)) {
         double val = PyFloat_AsDouble(pyArg);
-        if (afb_create_data_copy(out, AFB_PREDEFINED_TYPE_DOUBLE, &val, sizeof(val)) != 0) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create double parameter");
+        if (afb_create_data_copy(
+              out, AFB_PREDEFINED_TYPE_DOUBLE, &val, sizeof(val)) != 0) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create double parameter");
             return false;
         }
-    }
-    else if (PyUnicode_Check(pyArg)) {
-        const char *str = PyUnicode_AsUTF8(pyArg);
+    } else if (PyUnicode_Check(pyArg)) {
+        const char* str = PyUnicode_AsUTF8(pyArg);
         if (!str) {
-            PyErr_SetString(PyExc_UnicodeError, "Failed to convert string to UTF-8");
+            PyErr_SetString(PyExc_UnicodeError,
+                            "Failed to convert string to UTF-8");
             return false;
         }
         Py_INCREF(pyArg);
-        if (afb_create_data_raw(out, AFB_PREDEFINED_TYPE_STRINGZ, str, strlen(str) + 1,
-                                (void (*)(void *))Py_DecRef, pyArg) != 0) {
+        if (afb_create_data_raw(out,
+                                AFB_PREDEFINED_TYPE_STRINGZ,
+                                str,
+                                strlen(str) + 1,
+                                (void (*)(void*))Py_DecRef,
+                                pyArg) != 0) {
             Py_DECREF(pyArg);
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create string parameter");
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create string parameter");
             return false;
         }
-    }
-    else if (PyBool_Check(pyArg)) {
+    } else if (PyBool_Check(pyArg)) {
         bool bval = (pyArg == Py_True);
-        if (afb_create_data_copy(out, AFB_PREDEFINED_TYPE_BOOL, &bval, sizeof(bval)) != 0) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create boolean parameter");
+        if (afb_create_data_copy(
+              out, AFB_PREDEFINED_TYPE_BOOL, &bval, sizeof(bval)) != 0) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create boolean parameter");
             return false;
         }
-    }
-    else if (PyDict_Check(pyArg) || PyList_Check(pyArg)) {
+    } else if (PyDict_Check(pyArg) || PyList_Check(pyArg)) {
         int hasError = 0;
-        json_object *jobj = pyObjToJson(pyArg, &hasError);
+        json_object* jobj = pyObjToJson(pyArg, &hasError);
         if (hasError) {
-            PyErr_SetString(PyExc_TypeError, "Failed to convert Python object to JSON");
+            PyErr_SetString(PyExc_TypeError,
+                            "Failed to convert Python object to JSON");
             return false;
         }
-        if (afb_create_data_raw(out, AFB_PREDEFINED_TYPE_JSON_C, jobj, 0, (void *)json_object_put,
+        if (afb_create_data_raw(out,
+                                AFB_PREDEFINED_TYPE_JSON_C,
+                                jobj,
+                                0,
+                                (void*)json_object_put,
                                 jobj) != 0) {
             json_object_put(jobj);
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create JSON parameter");
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create JSON parameter");
             return false;
         }
-    }
-    else if (PyLong_Check(pyArg)) {
+    } else if (PyLong_Check(pyArg)) {
         int64_t i64_value = PyLong_AsLongLong(pyArg);
         if (i64_value == -1 && PyErr_Occurred()) {
             PyErr_SetString(PyExc_OverflowError, "Integer value too large");
             return false;
         }
-        if (afb_create_data_copy(out, AFB_PREDEFINED_TYPE_I64, &i64_value, sizeof(int64_t)) != 0) {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create integer parameter");
+        if (afb_create_data_copy(
+              out, AFB_PREDEFINED_TYPE_I64, &i64_value, sizeof(int64_t)) != 0) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "Failed to create integer parameter");
             return false;
         }
-    }
-    else {
+    } else {
         PyErr_Format(PyExc_TypeError, "Unsupported type at position %d", index);
         return false;
     }
@@ -520,7 +582,7 @@ bool _convert_py_argument_to_afb_data(PyObject *pyArg, afb_data_t *out, int inde
 }
 
 static void
-_unref_afb_params(afb_data_t *params, long count)
+_unref_afb_params(afb_data_t* params, long count)
 {
     for (long idx = 0; idx < count; idx++) {
         if (params[idx]) {
@@ -530,13 +592,15 @@ _unref_afb_params(afb_data_t *params, long count)
     }
 }
 
-static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueCallAsync(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: callasync(handle, api, verb, callback, context, ...)";
+    const char* errorMsg =
+      "syntax: callasync(handle, api, verb, callback, context, ...)";
     long index = 0;
     long params_count = 0;
-    GlueCallHandleT *handle = NULL;
-    PyObject *userdataP = NULL;
+    GlueCallHandleT* handle = NULL;
+    PyObject* userdataP = NULL;
 
     // parse input arguments
     long count = PyTuple_GET_SIZE(argsP);
@@ -545,19 +609,20 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
     if (count < 5)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
-    const char *apiname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 1));
+    const char* apiname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 1));
     if (!apiname)
         goto OnErrorExit;
 
-    const char *verbname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 2));
+    const char* verbname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 2));
     if (!verbname)
         goto OnErrorExit;
 
-    PyObject *callbackP = PyTuple_GetItem(argsP, 3);
+    PyObject* callbackP = PyTuple_GetItem(argsP, 3);
     // check callback is a valid function
     if ((callbackP != Py_None) && !PyCallable_Check(callbackP))
         goto OnErrorExit;
@@ -570,8 +635,9 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
 
     // retrieve subcall api argument(s)
     for (index = 0; index < count - 5; index++) {
-        PyObject *pyArg = PyTuple_GetItem(argsP, index + 5);
-        if (!_convert_py_argument_to_afb_data(pyArg, &params[index], index + 5)) {
+        PyObject* pyArg = PyTuple_GetItem(argsP, index + 5);
+        if (!_convert_py_argument_to_afb_data(
+              pyArg, &params[index], index + 5)) {
             errorMsg = "invalid argument type";
             goto OnErrorExit;
         }
@@ -593,19 +659,31 @@ static PyObject *GlueCallAsync(PyObject *self, PyObject *argsP)
     }
 
     switch (glue->magic) {
-    case GLUE_RQT_MAGIC_TAG:
-        Py_BEGIN_ALLOW_THREADS afb_req_subcall(glue->rqt.afb, apiname, verbname, (int)index, params,
-                                               afb_req_subcall_catch_events,
-                                               handle ? GlueRqtSubcallCb : NULL, (void *)handle);
-        Py_END_ALLOW_THREADS break;
-    default:
-        if (!GlueGetApi(glue)) {
-            errorMsg = "invalid api handle";
-            goto OnErrorExit;
-        }
-        Py_BEGIN_ALLOW_THREADS afb_api_call(GlueGetApi(glue), apiname, verbname, (int)index, params,
-                                            handle ? GlueApiSubcallCb : NULL, (void *)handle);
-        Py_END_ALLOW_THREADS
+        case GLUE_RQT_MAGIC_TAG:
+            Py_BEGIN_ALLOW_THREADS afb_req_subcall(glue->rqt.afb,
+                                                   apiname,
+                                                   verbname,
+                                                   (int)index,
+                                                   params,
+                                                   afb_req_subcall_catch_events,
+                                                   handle ? GlueRqtSubcallCb
+                                                          : NULL,
+                                                   (void*)handle);
+            Py_END_ALLOW_THREADS break;
+        default:
+            if (!GlueGetApi(glue)) {
+                errorMsg = "invalid api handle";
+                goto OnErrorExit;
+            }
+            Py_BEGIN_ALLOW_THREADS afb_api_call(GlueGetApi(glue),
+                                                apiname,
+                                                verbname,
+                                                (int)index,
+                                                params,
+                                                handle ? GlueApiSubcallCb
+                                                       : NULL,
+                                                (void*)handle);
+            Py_END_ALLOW_THREADS
     }
 
     _unref_afb_params(params, params_count);
@@ -625,9 +703,10 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueCallSync(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: callsync(handle, api, verb, ...)";
+    const char* errorMsg = "syntax: callsync(handle, api, verb, ...)";
     int err, status;
     long index = 0, count = PyTuple_GET_SIZE(argsP);
     long params_count = 0;
@@ -635,9 +714,9 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     afb_data_t params[count];
     unsigned nreplies = SUBCALL_MAX_RPLY;
     afb_data_t replies[SUBCALL_MAX_RPLY];
-    PyObject *paramsP = NULL;
-    PyObject *replyP = NULL;
-    PyObject *resultP = NULL;
+    PyObject* paramsP = NULL;
+    PyObject* replyP = NULL;
+    PyObject* resultP = NULL;
 
     memset(params, 0, sizeof(params));
     memset(replies, 0, sizeof(replies));
@@ -646,22 +725,24 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     if (count < 3)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
-    const char *apiname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 1));
+    const char* apiname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 1));
     if (!apiname)
         goto OnErrorExit;
 
-    const char *verbname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 2));
+    const char* verbname = PyUnicode_AsUTF8(PyTuple_GetItem(argsP, 2));
     if (!verbname)
         goto OnErrorExit;
 
     // retrieve subcall api argument(s)
     for (index = 0; index < count - 3; index++) {
-        PyObject *pyArg = PyTuple_GetItem(argsP, index + 3);
-        if (!_convert_py_argument_to_afb_data(pyArg, &params[index], index + 3)) {
+        PyObject* pyArg = PyTuple_GetItem(argsP, index + 3);
+        if (!_convert_py_argument_to_afb_data(
+              pyArg, &params[index], index + 3)) {
             errorMsg = "invalid argument type";
             goto OnErrorExit;
         }
@@ -669,21 +750,34 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
     params_count = index;
 
     switch (glue->magic) {
-    case GLUE_RQT_MAGIC_TAG:
-        Py_BEGIN_ALLOW_THREADS err =
-            afb_req_subcall_sync(glue->rqt.afb, apiname, verbname, (int)index, params,
-                                 afb_req_subcall_catch_events, &status, &nreplies, replies);
-        Py_END_ALLOW_THREADS break;
-    case GLUE_JOB_MAGIC_TAG:
-    case GLUE_API_MAGIC_TAG:
-    case GLUE_BINDER_MAGIC_TAG:
-        Py_BEGIN_ALLOW_THREADS err = afb_api_call_sync(
-            GlueGetApi(glue), apiname, verbname, (int)index, params, &status, &nreplies, replies);
-        Py_END_ALLOW_THREADS break;
+        case GLUE_RQT_MAGIC_TAG:
+            Py_BEGIN_ALLOW_THREADS err =
+              afb_req_subcall_sync(glue->rqt.afb,
+                                   apiname,
+                                   verbname,
+                                   (int)index,
+                                   params,
+                                   afb_req_subcall_catch_events,
+                                   &status,
+                                   &nreplies,
+                                   replies);
+            Py_END_ALLOW_THREADS break;
+        case GLUE_JOB_MAGIC_TAG:
+        case GLUE_API_MAGIC_TAG:
+        case GLUE_BINDER_MAGIC_TAG:
+            Py_BEGIN_ALLOW_THREADS err = afb_api_call_sync(GlueGetApi(glue),
+                                                           apiname,
+                                                           verbname,
+                                                           (int)index,
+                                                           params,
+                                                           &status,
+                                                           &nreplies,
+                                                           replies);
+            Py_END_ALLOW_THREADS break;
 
-    default:
-        errorMsg = "handle should be a req|api";
-        goto OnErrorExit;
+        default:
+            errorMsg = "handle should be a req|api";
+            goto OnErrorExit;
     }
 
     /*
@@ -719,12 +813,13 @@ static PyObject *GlueCallSync(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
     replyP = NULL;
 
-    errorMsg = PyPushAfbReply(PyTuple_GetItem(paramsP, 1), 0, nreplies, replies);
+    errorMsg =
+      PyPushAfbReply(PyTuple_GetItem(paramsP, 1), 0, nreplies, replies);
     _unref_afb_params(replies, nreplies);
     if (errorMsg)
         goto OnErrorExit;
 
-    resultP = PyObject_CallObject((PyObject *)&PyResponseType, paramsP);
+    resultP = PyObject_CallObject((PyObject*)&PyResponseType, paramsP);
     Py_DECREF(paramsP);
     return resultP;
 
@@ -739,9 +834,10 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtPush(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: eventpush(evtid, [arg1...argn])";
+    const char* errorMsg = "syntax: eventpush(evtid, [arg1...argn])";
     long count = PyTuple_GET_SIZE(argsP);
     afb_data_t params[count];
     long index = 0;
@@ -750,20 +846,26 @@ static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
 
     if (count < 1)
         goto OnErrorExit;
-    afb_event_t evtid = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    afb_event_t evtid =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!evtid || !afb_event_is_valid(evtid))
         goto OnErrorExit;
 
     // get response from PY and push them as afb-v4 object
     for (index = 0; index < count - 1; index++) {
         int hasError = 0;
-        json_object *argsJ = pyObjToJson(PyTuple_GetItem(argsP, index + 1), &hasError);
+        json_object* argsJ =
+          pyObjToJson(PyTuple_GetItem(argsP, index + 1), &hasError);
         if (hasError) {
             errorMsg = "invalid argument type";
             goto OnErrorExit;
         }
-        afb_create_data_raw(&params[index], AFB_PREDEFINED_TYPE_JSON_C, argsJ, 0,
-                            (void *)json_object_put, argsJ);
+        afb_create_data_raw(&params[index],
+                            AFB_PREDEFINED_TYPE_JSON_C,
+                            argsJ,
+                            0,
+                            (void*)json_object_put,
+                            argsJ);
     }
     params_count = index;
 
@@ -771,7 +873,7 @@ static PyObject *GlueEvtPush(PyObject *self, PyObject *argsP)
     Py_BEGIN_ALLOW_THREADS status = afb_event_push(evtid, (int)index, params);
     Py_END_ALLOW_THREADS
 
-    _unref_afb_params(params, params_count);
+      _unref_afb_params(params, params_count);
     if (status < 0) {
         errorMsg = "afb_event_push fail sending event";
         goto OnErrorExit;
@@ -785,19 +887,22 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtSubscribe(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtSubscribe(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: subscribe(rqt,evtid)";
+    const char* errorMsg = "syntax: subscribe(rqt,evtid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC_TAG)
         goto OnErrorExit;
 
-    afb_event_t evtid = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 1), GLUE_AFB_UID);
+    afb_event_t evtid =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 1), GLUE_AFB_UID);
     if (!evtid || !afb_event_is_valid(evtid))
         goto OnErrorExit;
 
@@ -814,19 +919,22 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtUnsubscribe(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtUnsubscribe(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: unsubscribe(rqt,evtid)";
+    const char* errorMsg = "syntax: unsubscribe(rqt,evtid)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC_TAG)
         goto OnErrorExit;
 
-    afb_event_t evtid = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 1), GLUE_AFB_UID);
+    afb_event_t evtid =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 1), GLUE_AFB_UID);
     if (!evtid || !afb_event_is_valid(evtid))
         goto OnErrorExit;
 
@@ -843,9 +951,10 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtNew(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtNew(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: evtid= eventnew(api,label)";
+    const char* errorMsg = "syntax: evtid= eventnew(api,label)";
     afb_event_t evtid;
     int err;
 
@@ -853,11 +962,12 @@ static PyObject *GlueEvtNew(PyObject *self, PyObject *argsP)
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || !GlueGetApi(glue))
         goto OnErrorExit;
 
-    char *label = pyObjToStr(PyTuple_GetItem(argsP, 1));
+    char* label = pyObjToStr(PyTuple_GetItem(argsP, 1));
     if (!label)
         goto OnErrorExit;
 
@@ -877,28 +987,31 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueVerbAdd(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueVerbAdd(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: addverb(api, config, context)";
+    const char* errorMsg = "syntax: addverb(api, config, context)";
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 3)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_API_MAGIC_TAG)
         goto OnErrorExit;
 
     int hasError = 0;
-    json_object *configJ = pyObjToJson(PyTuple_GetItem(argsP, 1), &hasError);
+    json_object* configJ = pyObjToJson(PyTuple_GetItem(argsP, 1), &hasError);
     if (hasError)
         goto OnErrorExit;
 
-    PyObject *userdataP = PyTuple_GetItem(argsP, 2);
+    PyObject* userdataP = PyTuple_GetItem(argsP, 2);
     if (userdataP)
         Py_IncRef(userdataP);
 
-    errorMsg = AfbAddOneVerb(afbMain->binder.afb, glue->api.afb, configJ, GlueApiVerbCb, userdataP);
+    errorMsg = AfbAddOneVerb(
+      afbMain->binder.afb, glue->api.afb, configJ, GlueApiVerbCb, userdataP);
     if (errorMsg)
         goto OnErrorExit;
 
@@ -910,14 +1023,16 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueSetLoa(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueSetLoa(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: setloa(rqt, newloa)";
+    const char* errorMsg = "syntax: setloa(rqt, newloa)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue && glue->magic != GLUE_RQT_MAGIC_TAG)
         goto OnErrorExit;
 
@@ -939,14 +1054,16 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueTimerAddref(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueTimerAddref(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: timeraddref(handle)";
+    const char* errorMsg = "syntax: timeraddref(handle)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 1)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_TIMER_MAGIC_TAG)
         goto OnErrorExit;
 
@@ -961,14 +1078,16 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueTimerUnref(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueTimerUnref(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: timerunref(handle)";
+    const char* errorMsg = "syntax: timerunref(handle)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 1)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_TIMER_MAGIC_TAG)
         goto OnErrorExit;
 
@@ -981,15 +1100,17 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtHandler(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtHandler(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg =
-        "syntax: evthandler(handle, {'pattern':'yyy','callback':'zzz'}, userdata)";
+    const char* errorMsg = "syntax: evthandler(handle, "
+                           "{'pattern':'yyy','callback':'zzz'}, userdata)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count < 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
@@ -998,29 +1119,31 @@ static PyObject *GlueEvtHandler(PyObject *self, PyObject *argsP)
     if (!apiv4)
         goto OnErrorExit;
 
-    GlueHandleT *handle = calloc(1, sizeof(GlueHandleT));
+    GlueHandleT* handle = calloc(1, sizeof(GlueHandleT));
     if (handle == NULL)
         goto OnErrorExit;
     handle->magic = GLUE_EVT_MAGIC_TAG;
     handle->event.apiv4 = apiv4;
 
-    PyObject *configP = PyTuple_GetItem(argsP, 1);
+    PyObject* configP = PyTuple_GetItem(argsP, 1);
     if (!PyDict_Check(configP))
         goto OnErrorExit;
 
     errorMsg = "config={'pattern':'yyy','callback':'zzz'}";
 
-    PyObject *patternP = PyDict_GetItemString(configP, "pattern");
+    PyObject* patternP = PyDict_GetItemString(configP, "pattern");
     if (!patternP || !PyUnicode_Check(patternP))
         goto OnErrorExit;
-    char *pattern = pyObjToStr(patternP);
+    char* pattern = pyObjToStr(patternP);
 
     handle->event.async.callbackP = PyDict_GetItemString(configP, "callback");
-    if (!handle->event.async.callbackP || !PyCallable_Check(handle->event.async.callbackP))
+    if (!handle->event.async.callbackP ||
+        !PyCallable_Check(handle->event.async.callbackP))
         goto OnErrorExit;
     Py_IncRef(handle->event.async.callbackP);
 
-    handle->event.async.userdataP = (count < 3) ? NULL : PyTuple_GetItem(argsP, 2);
+    handle->event.async.userdataP =
+      (count < 3) ? NULL : PyTuple_GetItem(argsP, 2);
     if (handle->event.async.userdataP == Py_None)
         handle->event.async.userdataP = NULL;
     if (handle->event.async.userdataP)
@@ -1039,22 +1162,24 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueEvtDelete(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: evtdelete(handle, pattern: str)";
-    void *userdata;
-    char *pattern = NULL;
+    const char* errorMsg = "syntax: evtdelete(handle, pattern: str)";
+    void* userdata;
+    char* pattern = NULL;
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
     afb_api_t apiv4 = GlueGetApi(glue);
     if (!apiv4)
         goto OnErrorExit;
-    PyObject *patternP = PyTuple_GetItem(argsP, 1);
+    PyObject* patternP = PyTuple_GetItem(argsP, 1);
     if (!patternP || !PyUnicode_Check(patternP))
         goto OnErrorExit;
 
@@ -1069,7 +1194,7 @@ static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
     pattern = NULL;
     if (errorMsg)
         goto OnErrorExit;
-    GlueHandleT *handle = (GlueHandleT *)userdata;
+    GlueHandleT* handle = (GlueHandleT*)userdata;
     assert(handle->magic == GLUE_EVT_MAGIC_TAG);
     GlueFreeHandleCb(handle);
 
@@ -1082,14 +1207,16 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueTimerNew(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueTimerNew(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: timernew(api, config, context)";
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    const char* errorMsg = "syntax: timernew(api, config, context)";
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
-    GlueHandleT *handle = (GlueHandleT *)calloc(1, sizeof(GlueHandleT));
+    GlueHandleT* handle = (GlueHandleT*)calloc(1, sizeof(GlueHandleT));
     if (handle == NULL)
         goto OnErrorExit;
     handle->magic = GLUE_TIMER_MAGIC_TAG;
@@ -1110,16 +1237,18 @@ static PyObject *GlueTimerNew(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
 
     // parse config
-    PyObject *slotP;
-    errorMsg =
-        "timerconfig= {'uid':'xxx', 'callback': MyCallback, 'period': timer(ms), 'count': 0-xx}";
+    PyObject* slotP;
+    errorMsg = "timerconfig= {'uid':'xxx', 'callback': MyCallback, 'period': "
+               "timer(ms), 'count': 0-xx}";
     slotP = PyDict_GetItemString(handle->timer.configP, "uid");
     if (!slotP || !PyUnicode_Check(slotP))
         goto OnErrorExit;
     handle->timer.async.uid = pyObjToStr(slotP);
 
-    handle->timer.async.callbackP = PyDict_GetItemString(handle->timer.configP, "callback");
-    if (!handle->timer.async.callbackP || !PyCallable_Check(handle->timer.async.callbackP))
+    handle->timer.async.callbackP =
+      PyDict_GetItemString(handle->timer.configP, "callback");
+    if (!handle->timer.async.callbackP ||
+        !PyCallable_Check(handle->timer.async.callbackP))
         goto OnErrorExit;
 
     slotP = PyDict_GetItemString(handle->timer.configP, "period");
@@ -1136,8 +1265,16 @@ static PyObject *GlueTimerNew(PyObject *self, PyObject *argsP)
     if (period < 0)
         goto OnErrorExit;
 
-    int err = afb_timer_create(&handle->timer.afb, 0, 0, 0, (int)count, (int)period, 0, GlueTimerCb,
-                               (void *)handle, 0);
+    int err = afb_timer_create(&handle->timer.afb,
+                               0,
+                               0,
+                               0,
+                               (int)count,
+                               (int)period,
+                               0,
+                               GlueTimerCb,
+                               (void*)handle,
+                               0);
     if (err) {
         errorMsg = "(hoops) afb_timer_create fail";
         goto OnErrorExit;
@@ -1151,10 +1288,11 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueJobAbort(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueJobAbort(PyObject* self, PyObject* argsP)
 {
     long count = PyTuple_GET_SIZE(argsP);
-    const char *errorMsg = "syntax: jobabort(jobid)";
+    const char* errorMsg = "syntax: jobabort(jobid)";
     if (count != 1)
         goto OnErrorExit;
 
@@ -1173,16 +1311,18 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueJobPost(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueJobPost(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "jobpost(binder, callback, delay, [userdata])";
-    GlueCallHandleT *handle = NULL;
+    const char* errorMsg = "jobpost(binder, callback, delay, [userdata])";
+    GlueCallHandleT* handle = NULL;
 
     long count = PyTuple_GET_SIZE(argsP);
     if (count < 3)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
@@ -1202,7 +1342,7 @@ static PyObject *GlueJobPost(PyObject *self, PyObject *argsP)
     }
 
     Py_IncRef(handle->async.callbackP);
-    PyObject *uidP = PyDict_GetItemString(handle->async.callbackP, "__name__");
+    PyObject* uidP = PyDict_GetItemString(handle->async.callbackP, "__name__");
     if (uidP)
         handle->async.uid = pyObjToStr(uidP);
     /* PyDict_GetItemString() returns a borrowed reference. */
@@ -1219,8 +1359,13 @@ static PyObject *GlueJobPost(PyObject *self, PyObject *argsP)
             Py_IncRef(handle->async.userdataP);
     }
 
-    // ms delay for OnTimerCB (delay is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
-    int jobid = afb_sched_post_job(NULL /*group*/, delay, 0 /*exec-timeout*/, GlueJobPostCb, handle,
+    // ms delay for OnTimerCB (delay is dynamic and depends on
+    // CURLOPT_LOW_SPEED_TIME)
+    int jobid = afb_sched_post_job(NULL /*group*/,
+                                   delay,
+                                   0 /*exec-timeout*/,
+                                   GlueJobPostCb,
+                                   handle,
                                    Afb_Sched_Mode_Start);
     if (jobid <= 0)
         goto OnErrorExit;
@@ -1240,10 +1385,11 @@ OnErrorExit:
 }
 
 // manual_lock means jobenter; !manual_lock means jobcall
-PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
+PyObject*
+GlueJob(PyObject* self, PyObject* argsP, bool manual_lock)
 {
-    const char *errorMsg = "jobcall(binder, callback, timeout, [userdata])";
-    GlueHandleT *handle = NULL;
+    const char* errorMsg = "jobcall(binder, callback, timeout, [userdata])";
+    GlueHandleT* handle = NULL;
     int err;
 
     long count = PyTuple_GET_SIZE(argsP);
@@ -1251,7 +1397,8 @@ PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
         goto OnErrorExit;
 
     // arg index 0: handle
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
@@ -1271,7 +1418,8 @@ PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
         goto OnErrorExit;
     }
     Py_IncRef(handle->job.async.callbackP);
-    PyObject *uidP = PyDict_GetItemString(handle->job.async.callbackP, "__name__");
+    PyObject* uidP =
+      PyDict_GetItemString(handle->job.async.callbackP, "__name__");
     if (uidP)
         handle->job.async.uid = pyObjToStr(uidP);
     /* PyDict_GetItemString() returns a borrowed reference. */
@@ -1291,11 +1439,12 @@ PyObject *GlueJob(PyObject *self, PyObject *argsP, bool manual_lock)
     }
 
     // call the damned thing
-    Py_BEGIN_ALLOW_THREADS if (manual_lock) err = afb_sched_sync(timeout, GlueJobEnterCb, handle);
+    Py_BEGIN_ALLOW_THREADS if (manual_lock) err =
+      afb_sched_sync(timeout, GlueJobEnterCb, handle);
     else afb_sig_monitor_run(timeout, GlueJobCallCb, handle);
     Py_END_ALLOW_THREADS
 
-        if (manual_lock && err < 0)
+      if (manual_lock && err < 0)
     {
         errorMsg = "afb_sched_sync errored (timeout?)";
         goto OnErrorExit;
@@ -1314,25 +1463,29 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueJobCall(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueJobCall(PyObject* self, PyObject* argsP)
 {
     return GlueJob(self, argsP, false);
 }
 
-static PyObject *GlueJobEnter(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueJobEnter(PyObject* self, PyObject* argsP)
 {
     return GlueJob(self, argsP, true);
 }
 
-static PyObject *GlueJobLeave(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueJobLeave(PyObject* self, PyObject* argsP)
 {
     int err;
-    const char *errorMsg = "syntax: jobleave(job, status)";
+    const char* errorMsg = "syntax: jobleave(job, status)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit0;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_JOB_MAGIC_TAG)
         goto OnErrorExit0;
     glue->job.status = PyLong_AsLong(PyTuple_GetItem(argsP, 1));
@@ -1352,14 +1505,16 @@ OnErrorExit0:
     return NULL;
 }
 
-static PyObject *GlueExit(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueExit(PyObject* self, PyObject* argsP)
 {
-    const char *errorMsg = "syntax: exit(handle, status)";
+    const char* errorMsg = "syntax: exit(handle, status)";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue)
         goto OnErrorExit;
 
@@ -1373,23 +1528,25 @@ OnErrorExit:
     return NULL;
 }
 
-static PyObject *GlueClientInfo(PyObject *self, PyObject *argsP)
+static PyObject*
+GlueClientInfo(PyObject* self, PyObject* argsP)
 {
-    PyObject *resultP;
-    const char *errorMsg = "syntax: clientinfo(rqt, ['key'])";
+    PyObject* resultP;
+    const char* errorMsg = "syntax: clientinfo(rqt, ['key'])";
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 1 && count != 2)
         goto OnErrorExit0;
 
-    GlueHandleT *glue = PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
+    GlueHandleT* glue =
+      PyCapsule_GetPointer(PyTuple_GetItem(argsP, 0), GLUE_AFB_UID);
     if (!glue || glue->magic != GLUE_RQT_MAGIC_TAG)
         goto OnErrorExit0;
 
-    PyObject *keyP = PyTuple_GetItem(argsP, 1);
+    PyObject* keyP = PyTuple_GetItem(argsP, 1);
     if (keyP && !PyUnicode_Check(keyP))
         goto OnErrorExit;
 
-    json_object *clientJ = afb_req_get_client_info(glue->rqt.afb);
+    json_object* clientJ = afb_req_get_client_info(glue->rqt.afb);
     if (!clientJ) {
         errorMsg = "(hoops) afb_req_get_client_info no session info";
         goto OnErrorExit;
@@ -1397,9 +1554,9 @@ static PyObject *GlueClientInfo(PyObject *self, PyObject *argsP)
 
     if (!keyP) {
         resultP = jsonToPyObj(clientJ);
-    }
-    else {
-        json_object *keyJ = json_object_object_get(clientJ, PyUnicode_AsUTF8(keyP));
+    } else {
+        json_object* keyJ =
+          json_object_object_get(clientJ, PyUnicode_AsUTF8(keyP));
         if (!keyJ) {
             errorMsg = "unknown client info key";
             goto OnErrorExit;
@@ -1415,7 +1572,8 @@ OnErrorExit0:
     return NULL;
 }
 
-static PyObject *GluePingTest(PyObject *self, PyObject *argsP)
+static PyObject*
+GluePingTest(PyObject* self, PyObject* argsP)
 {
     static long count = 0;
     long tid = pthread_self();
@@ -1424,65 +1582,123 @@ static PyObject *GluePingTest(PyObject *self, PyObject *argsP)
 }
 
 static PyMethodDef MethodsDef[] = {
-    {"error", GluePrintError, METH_VARARGS, "print level AFB_SYSLOG_LEVEL_ERROR"},
-    {"warning", GluePrintWarning, METH_VARARGS, "print level AFB_SYSLOG_LEVEL_WARNING"},
-    {"notice", GluePrintNotice, METH_VARARGS, "print level AFB_SYSLOG_LEVEL_NOTICE"},
-    {"info", GluePrintInfo, METH_VARARGS, "print level AFB_SYSLOG_LEVEL_INFO"},
-    {"debug", GluePrintDebug, METH_VARARGS, "print level AFB_SYSLOG_LEVEL_DEBUG"},
-    {"ping", GluePingTest, METH_VARARGS, "Check afb-libpython is loaded"},
-    {"binder", GlueBinderConf, METH_VARARGS, "Configure and create afbMain glue"},
-    {"config", GlueGetConfig, METH_VARARGS, "Return glue handle full/partial config"},
-    {"apiadd", GlueApiAdd, METH_VARARGS, "Add a new API to the binder"},
-    {"apiimport", GlueApiImport, METH_VARARGS, "Import a new API to the binder"},
-    {"apicreate", GlueApiCreate, METH_VARARGS, "Create a new API to the binder"},
-    {"loopstart", GlueLoopStart, METH_VARARGS, "Activate mainloop and exec startup callback"},
-    {"reply", GlueReply, METH_VARARGS, "Explicit response tp afb request"},
-    {"binding", GlueBindingLoad, METH_VARARGS, "Load binding an expose corresponding api/verbs"},
-    {"callasync", GlueCallAsync, METH_VARARGS, "AFB asynchronous subcall"},
-    {"callsync", GlueCallSync, METH_VARARGS, "AFB synchronous subcall"},
-    {"verbadd", GlueVerbAdd, METH_VARARGS, "Add a verb to a non sealed API"},
-    {"evtsubscribe", GlueEvtSubscribe, METH_VARARGS, "Subscribe to event"},
-    {"evtunsubscribe", GlueEvtUnsubscribe, METH_VARARGS, "Unsubscribe to event"},
-    {"evthandler", GlueEvtHandler, METH_VARARGS, "Register event callback handler"},
-    {"evtdelete", GlueEvtDelete, METH_VARARGS, "Delete event callback handler"},
-    {"evtnew", GlueEvtNew, METH_VARARGS, "Create a new event"},
-    {"evtpush", GlueEvtPush, METH_VARARGS, "Push a given event"},
-    {"timerunref", GlueTimerUnref, METH_VARARGS, "Unref existing timer"},
-    {"timeraddref", GlueTimerAddref, METH_VARARGS, "Addref to existing timer"},
-    {"timernew", GlueTimerNew, METH_VARARGS, "Create a new timer"},
-    {"setloa", GlueSetLoa, METH_VARARGS, "Set LOA (LevelOfAssurance)"},
-    {"jobcall", GlueJobCall, METH_VARARGS, "Synchronously call job in the current thread"},
-    {"jobenter", GlueJobEnter, METH_VARARGS, "Register a mainloop waiting lock"},
-    {"jobleave", GlueJobLeave, METH_VARARGS, "Unlock jobenter"},
-    {"jobpost", GlueJobPost, METH_VARARGS, "Post a job after delay(ms)"},
-    {"jobabort", GlueJobAbort, METH_VARARGS, "Cancel a jobpost timer"},
-    {"clientinfo", GlueClientInfo, METH_VARARGS, "Return session info about client"},
-    {"exit", GlueExit, METH_VARARGS, "Exit binder with status"},
+    { "error",
+      GluePrintError,
+      METH_VARARGS,
+      "print level AFB_SYSLOG_LEVEL_ERROR" },
+    { "warning",
+      GluePrintWarning,
+      METH_VARARGS,
+      "print level AFB_SYSLOG_LEVEL_WARNING" },
+    { "notice",
+      GluePrintNotice,
+      METH_VARARGS,
+      "print level AFB_SYSLOG_LEVEL_NOTICE" },
+    { "info",
+      GluePrintInfo,
+      METH_VARARGS,
+      "print level AFB_SYSLOG_LEVEL_INFO" },
+    { "debug",
+      GluePrintDebug,
+      METH_VARARGS,
+      "print level AFB_SYSLOG_LEVEL_DEBUG" },
+    { "ping", GluePingTest, METH_VARARGS, "Check afb-libpython is loaded" },
+    { "binder",
+      GlueBinderConf,
+      METH_VARARGS,
+      "Configure and create afbMain glue" },
+    { "config",
+      GlueGetConfig,
+      METH_VARARGS,
+      "Return glue handle full/partial config" },
+    { "apiadd", GlueApiAdd, METH_VARARGS, "Add a new API to the binder" },
+    { "apiimport",
+      GlueApiImport,
+      METH_VARARGS,
+      "Import a new API to the binder" },
+    { "apicreate",
+      GlueApiCreate,
+      METH_VARARGS,
+      "Create a new API to the binder" },
+    { "loopstart",
+      GlueLoopStart,
+      METH_VARARGS,
+      "Activate mainloop and exec startup callback" },
+    { "reply", GlueReply, METH_VARARGS, "Explicit response tp afb request" },
+    { "binding",
+      GlueBindingLoad,
+      METH_VARARGS,
+      "Load binding an expose corresponding api/verbs" },
+    { "callasync", GlueCallAsync, METH_VARARGS, "AFB asynchronous subcall" },
+    { "callsync", GlueCallSync, METH_VARARGS, "AFB synchronous subcall" },
+    { "verbadd", GlueVerbAdd, METH_VARARGS, "Add a verb to a non sealed API" },
+    { "evtsubscribe", GlueEvtSubscribe, METH_VARARGS, "Subscribe to event" },
+    { "evtunsubscribe",
+      GlueEvtUnsubscribe,
+      METH_VARARGS,
+      "Unsubscribe to event" },
+    { "evthandler",
+      GlueEvtHandler,
+      METH_VARARGS,
+      "Register event callback handler" },
+    { "evtdelete",
+      GlueEvtDelete,
+      METH_VARARGS,
+      "Delete event callback handler" },
+    { "evtnew", GlueEvtNew, METH_VARARGS, "Create a new event" },
+    { "evtpush", GlueEvtPush, METH_VARARGS, "Push a given event" },
+    { "timerunref", GlueTimerUnref, METH_VARARGS, "Unref existing timer" },
+    { "timeraddref",
+      GlueTimerAddref,
+      METH_VARARGS,
+      "Addref to existing timer" },
+    { "timernew", GlueTimerNew, METH_VARARGS, "Create a new timer" },
+    { "setloa", GlueSetLoa, METH_VARARGS, "Set LOA (LevelOfAssurance)" },
+    { "jobcall",
+      GlueJobCall,
+      METH_VARARGS,
+      "Synchronously call job in the current thread" },
+    { "jobenter",
+      GlueJobEnter,
+      METH_VARARGS,
+      "Register a mainloop waiting lock" },
+    { "jobleave", GlueJobLeave, METH_VARARGS, "Unlock jobenter" },
+    { "jobpost", GlueJobPost, METH_VARARGS, "Post a job after delay(ms)" },
+    { "jobabort", GlueJobAbort, METH_VARARGS, "Cancel a jobpost timer" },
+    { "clientinfo",
+      GlueClientInfo,
+      METH_VARARGS,
+      "Return session info about client" },
+    { "exit", GlueExit, METH_VARARGS, "Exit binder with status" },
 
-    {NULL} /* sentinel */
+    { NULL } /* sentinel */
 };
 
 static PyModuleDef ModuleDef = {
     PyModuleDef_HEAD_INIT,
     "libafb",
     "Python 'libafb' expose 'afb-libafb' to Python scripting language.",
-    -1,  // Rationale for Per-module State https://www.python.org/dev/peps/pep-0630/
+    -1, // Rationale for Per-module State
+        // https://www.python.org/dev/peps/pep-0630/
     MethodsDef,
 };
 
 // Init redpak native module
-PyObject *PyInit_libafb(void)
+PyObject*
+PyInit_libafb(void)
 {
     int status = 0;
-    fprintf(stderr, "Entering Python module initialization function %s\n", __FUNCTION__);
-    PyObject *module = PyModule_Create(&ModuleDef);
+    fprintf(stderr,
+            "Entering Python module initialization function %s\n",
+            __FUNCTION__);
+    PyObject* module = PyModule_Create(&ModuleDef);
 
     status = PyType_Ready(&PyResponseType);
     if (status < 0)
         goto OnErrorExit;
 
     Py_INCREF(&PyResponseType);
-    status = PyModule_AddObject(module, "response", (PyObject *)&PyResponseType);
+    status = PyModule_AddObject(module, "response", (PyObject*)&PyResponseType);
     if (status < 0)
         goto OnErrorExit;
 

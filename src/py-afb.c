@@ -156,6 +156,8 @@ static PyObject*
 GlueBinderConf(PyObject* self, PyObject* argsP)
 {
     const char* errorMsg = "syntax: binder(config)";
+    json_object* configJ = NULL;
+
     if (afbMain != NULL) {
         errorMsg = "(hoops) binder(config) already loaded";
         goto OnErrorExit;
@@ -177,24 +179,31 @@ GlueBinderConf(PyObject* self, PyObject* argsP)
         errorMsg = "invalid config object";
         goto OnErrorExit;
     }
+
     int hasError = 0;
-    json_object* configJ = pyObjToJson(afbMain->binder.configP, &hasError);
+    configJ = pyObjToJson(afbMain->binder.configP, &hasError);
     if (hasError) {
-        json_object_put(configJ);
         errorMsg = "json incompatible config";
         goto OnErrorExit;
     }
 
     errorMsg = AfbBinderConfig(configJ, &afbMain->binder.afb, afbMain);
     json_object_put(configJ);
+    configJ = NULL;
     if (errorMsg)
         goto OnErrorExit;
 
     // return afbMain glue as a Python capsule glue
+
     PyObject* capsule = PyCapsule_New(afbMain, GLUE_AFB_UID, NULL);
+    if (!capsule) {
+        errorMsg = "failed to create binder capsule";
+        goto OnErrorExit;
+    }
     return capsule;
 
 OnErrorExit:
+    json_object_put(configJ);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     PyErr_Print();
     return NULL;

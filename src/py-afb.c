@@ -188,10 +188,16 @@ GlueBinderConf(PyObject* self, PyObject* argsP)
     }
 
     errorMsg = AfbBinderConfig(configJ, &afbMain->binder.afb, afbMain);
-    json_object_put(configJ);
-    configJ = NULL;
     if (errorMsg)
         goto OnErrorExit;
+
+    // Keep the JSON representation reachable for the binder lifetime.
+    // AfbBinderConfig may retain references to the configuration tree after
+    // the call returns, so dropping the last Python-side reference here makes
+    // the tree appear as definitely lost when the process exits under
+    // Valgrind.
+    afbMain->binder.configJ = configJ;
+    configJ = NULL;
 
     // return afbMain glue as a Python capsule glue
 

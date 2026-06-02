@@ -53,6 +53,7 @@ typedef struct {
     AfbBinderHandleT *afb;
     //sem_t sem;
     PyObject *configP;
+    json_object *configJ;
     PyThreadState *pyState;
 } PyBinderHandleT;
 

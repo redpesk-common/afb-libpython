@@ -1043,7 +1043,7 @@ static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
 {
     const char *errorMsg = "syntax: evtdelete(handle, pattern: str)";
     void *userdata;
-    char *pattern;
+    char *pattern = NULL;
     long count = PyTuple_GET_SIZE(argsP);
     if (count != 2)
         goto OnErrorExit;
@@ -1059,8 +1059,14 @@ static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
         goto OnErrorExit;
 
     pattern = pyObjToStr(patternP);
+    if (!pattern) {
+        errorMsg = "invalid event pattern";
+        goto OnErrorExit;
+    }
 
     errorMsg = AfbDelOneEvent(apiv4, pattern, &userdata);
+    free(pattern);
+    pattern = NULL;
     if (errorMsg)
         goto OnErrorExit;
     GlueHandleT *handle = (GlueHandleT *)userdata;
@@ -1070,6 +1076,7 @@ static PyObject *GlueEvtDelete(PyObject *self, PyObject *argsP)
     Py_RETURN_NONE;
 
 OnErrorExit:
+    free(pattern);
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;

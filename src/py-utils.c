@@ -24,6 +24,7 @@
 #include <frameobject.h>
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
@@ -61,14 +62,13 @@ afb_api_t GlueGetApi(GlueHandleT *glue) {
     return afbApi;
 }
 
-static inline void
-PyAfbDataUnref(afb_data_t *data)
-{
-    if (data != NULL && *data != NULL) {
-        afb_data_unref(*data);
-        *data = NULL;
-    }
-}
+// Adaptation to python lesser than 3.14
+#if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 < 0x030d0000
+#define PyLong_FromInt32(x)   PyLong_FromLong((long)(x))
+#define PyLong_FromUInt32(x)  PyLong_FromUnsignedLong((unsigned long)(x))
+#define PyLong_FromInt64(x)   PyLong_FromLongLong((long long)(x))
+#define PyLong_FromUInt64(x)  PyLong_FromUnsignedLongLong((unsigned long long)(x))
+#endif
 
 // retreive subcall response and build PY response
 const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, const afb_data_t *replies) {
@@ -79,9 +79,15 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
         if (replies[idx]) {
             switch (afb_typeid(afb_data_type(replies[idx])))  {
 
+                case Afb_Typeid_Predefined_Bytearray: {
+                    const char *value= (char*)afb_data_ro_pointer(replies[idx]);
+                    size_t size = afb_data_size(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyByteArray_FromStringAndSize(value, size));
+                    break;
+                }
                 case Afb_Typeid_Predefined_Stringz: {
                     const char *value= (char*)afb_data_ro_pointer(replies[idx]);
-                    if (value && value[0]) {
+                    if (value) {
                         PyTuple_SetItem(resultP, idx+start, PyUnicode_FromString(value));
                     } else {
                         PyTuple_SetItem(resultP, idx+start, AFB_Py_NewRef(Py_None));
@@ -89,35 +95,60 @@ const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, con
                     break;
                 }
                 case Afb_Typeid_Predefined_Bool: {
-                    const long *value= (long*)afb_data_ro_pointer(replies[idx]);
+                    const int8_t *value= (int8_t*)afb_data_ro_pointer(replies[idx]);
                     PyTuple_SetItem(resultP, idx+start, PyBool_FromLong(*value));
                     break;
                 }
-                case Afb_Typeid_Predefined_I8:
-                case Afb_Typeid_Predefined_U8:
-                case Afb_Typeid_Predefined_I16:
-                case Afb_Typeid_Predefined_U16:
-                case Afb_Typeid_Predefined_I32:
-                case Afb_Typeid_Predefined_U32:
+                case Afb_Typeid_Predefined_I8: {
+                    const int8_t *value= (int8_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32((int32_t)*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_U8: {
+                    const uint8_t *value= (uint8_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32((uint32_t)*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_I16: {
+                    const int16_t *value= (int16_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32((int32_t)*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_U16: {
+                    const uint16_t *value= (uint16_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32((uint32_t)*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_I32: {
+                    const int32_t *value= (int32_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32(*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_U32: {
+                    const uint32_t *value= (uint32_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32(*value));
+                    break;
+                }
                 case Afb_Typeid_Predefined_I64: {
-                    /* We suppose here a 64bit arch, where sizeof(long) == sizeof(long long) == 8 */
-                    const long *value= (long*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromLong(*value));
+                    const int64_t *value= (int64_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt64(*value));
                     break;
                 }
                 case Afb_Typeid_Predefined_U64: {
-                    /* We suppose here a 64bit arch, where sizeof(long) == sizeof(long long) == 8 */
-                    const unsigned long *value= (unsigned long*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUnsignedLong(*value));
+                    const uint64_t *value= (uint64_t*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt64(*value));
                     break;
                 }
-                case Afb_Typeid_Predefined_Double:
                 case Afb_Typeid_Predefined_Float: {
+                    const float *value= (float*)afb_data_ro_pointer(replies[idx]);
+                    PyTuple_SetItem(resultP, idx+start, PyFloat_FromDouble((double)*value));
+                    break;
+                }
+                case Afb_Typeid_Predefined_Double: {
                     const double *value= (double*)afb_data_ro_pointer(replies[idx]);
                     PyTuple_SetItem(resultP, idx+start, PyFloat_FromDouble(*value));
                     break;
                 }
-
                 case  Afb_Typeid_Predefined_Json: {
                     afb_data_t data = NULL;
                     json_object *valueJ;

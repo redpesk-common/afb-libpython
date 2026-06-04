@@ -70,145 +70,101 @@ afb_api_t GlueGetApi(GlueHandleT *glue) {
 #define PyLong_FromUInt64(x)  PyLong_FromUnsignedLongLong((unsigned long long)(x))
 #endif
 
-// retreive subcall response and build PY response
-const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, const afb_data_t *replies) {
-    const char *errorMsg=NULL;
+// Converts an instance of afb_data_t to its PyObject representation
+// Returns NULL when the convertion fails
+PyObject *convert_AfbData_to_PyObject(afb_data_t data)
+{
+    afb_data_t other;
+    PyObject *result = NULL;
+    void *pointer;
+    size_t size;
 
-    for (int idx = 0; idx < nreplies; idx++)
-    {
-        if (replies[idx]) {
-            switch (afb_typeid(afb_data_type(replies[idx])))  {
+    if (data == NULL)
+        result = AFB_Py_NewRef(Py_None);
 
-                case Afb_Typeid_Predefined_Bytearray: {
-                    const char *value= (char*)afb_data_ro_pointer(replies[idx]);
-                    size_t size = afb_data_size(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyByteArray_FromStringAndSize(value, size));
-                    break;
-                }
-                case Afb_Typeid_Predefined_Stringz: {
-                    const char *value= (char*)afb_data_ro_pointer(replies[idx]);
-                    if (value) {
-                        PyTuple_SetItem(resultP, idx+start, PyUnicode_FromString(value));
-                    } else {
-                        PyTuple_SetItem(resultP, idx+start, AFB_Py_NewRef(Py_None));
-                    }
-                    break;
-                }
-                case Afb_Typeid_Predefined_Bool: {
-                    const int8_t *value= (int8_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyBool_FromLong(*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_I8: {
-                    const int8_t *value= (int8_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32((int32_t)*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_U8: {
-                    const uint8_t *value= (uint8_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32((uint32_t)*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_I16: {
-                    const int16_t *value= (int16_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32((int32_t)*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_U16: {
-                    const uint16_t *value= (uint16_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32((uint32_t)*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_I32: {
-                    const int32_t *value= (int32_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt32(*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_U32: {
-                    const uint32_t *value= (uint32_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt32(*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_I64: {
-                    const int64_t *value= (int64_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromInt64(*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_U64: {
-                    const uint64_t *value= (uint64_t*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyLong_FromUInt64(*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_Float: {
-                    const float *value= (float*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyFloat_FromDouble((double)*value));
-                    break;
-                }
-                case Afb_Typeid_Predefined_Double: {
-                    const double *value= (double*)afb_data_ro_pointer(replies[idx]);
-                    PyTuple_SetItem(resultP, idx+start, PyFloat_FromDouble(*value));
-                    break;
-                }
-                case  Afb_Typeid_Predefined_Json: {
-                    afb_data_t data = NULL;
-                    json_object *valueJ;
-                    int err;
-
-                    err = afb_data_convert(replies[idx], &afb_type_predefined_json_c, &data);
-                    if (err) {
-                        errorMsg= "unsupported json string";
-                        goto OnErrorExit;
-                    }
-                    valueJ= (json_object*)afb_data_ro_pointer(data);
-                    PyTuple_SetItem(resultP, idx+start, jsonToPyObj(valueJ));
-                    afb_data_unref(data);
-                    break;
-                }
-                case  Afb_Typeid_Predefined_Json_C: {
-                    json_object *valueJ= (json_object*)afb_data_ro_pointer(replies[idx]);
-                    if (valueJ) {
-                        PyTuple_SetItem(resultP, idx+start, jsonToPyObj(valueJ));
-                    } else {
-                        PyTuple_SetItem(resultP, idx+start, AFB_Py_NewRef(Py_None));
-                    }
-                    break;
-                }
-                default:
-                    afb_data_t cvt = NULL;
-
-                    // 1) try convert to JSON-C
-                    if (afb_data_convert(replies[idx], &afb_type_predefined_json_c, &cvt) >= 0) {
-                        json_object *valueJ = (json_object*)afb_data_ro_pointer(cvt);
-                        PyTuple_SetItem(resultP, idx+start, valueJ ? jsonToPyObj(valueJ) : AFB_Py_NewRef(Py_None));
-                        afb_data_unref(cvt);
-                        break;
-                    }
-
-                    // 2) try convert to STRINGZ
-                    if (afb_data_convert(replies[idx], &afb_type_predefined_stringz, &cvt) >= 0) {
-                        const char *s = (const char*)afb_data_ro_pointer(cvt);
-                        PyTuple_SetItem(resultP, idx+start, s ? PyUnicode_FromString(s) : AFB_Py_NewRef(Py_None));
-                        afb_data_unref(cvt);
-                        break;
-                    }
-
-                    // 3) fallback: if a buffer exists, expose bytes
-                    size_t sz = afb_data_size(replies[idx]);
-                    if (sz > 0) {
-                        const void *buf = afb_data_ro_pointer(replies[idx]);
-                        PyTuple_SetItem(resultP, idx+start, PyBytes_FromStringAndSize(buf, (Py_ssize_t)sz));
-                        break;
-                    }
-
-                    errorMsg = "unsupported return data type";
-                    goto OnErrorExit;
+    else if (afb_data_get_constant(data, &pointer, &size) >= 0) {
+        switch (afb_typeid(afb_data_type(data))) {
+        case Afb_Typeid_Predefined_Bytearray:
+            result = PyByteArray_FromStringAndSize(pointer, size);
+            break;
+        case Afb_Typeid_Predefined_Stringz:
+            result = pointer == NULL
+                            ? AFB_Py_NewRef(Py_None)
+                            : PyUnicode_FromString(pointer);
+            break;
+        case Afb_Typeid_Predefined_Bool:
+            result = PyBool_FromLong((long)*(int8_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_I8:
+            result = PyLong_FromInt32((int32_t)*(int8_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_U8:
+            result = PyLong_FromUInt32((uint32_t)*(uint8_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_I16:
+            result = PyLong_FromInt32((int32_t)*(int16_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_U16:
+            result = PyLong_FromUInt32((uint32_t)*(uint16_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_I32:
+            result = PyLong_FromInt32(*(int32_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_U32:
+            result = PyLong_FromUInt32(*(uint32_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_I64:
+            result = PyLong_FromInt64(*(int64_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_U64:
+            result = PyLong_FromUInt64(*(uint64_t*)pointer);
+            break;
+        case Afb_Typeid_Predefined_Float:
+            result = PyFloat_FromDouble((double)*(float*)pointer);
+            break;
+        case Afb_Typeid_Predefined_Double:
+            result = PyFloat_FromDouble(*(double*)pointer);
+            break;
+        case  Afb_Typeid_Predefined_Json_C:
+            result = jsonToPyObj(pointer);
+            break;
+        default:
+            // 1) try convert to JSON-C
+            if (afb_data_convert(data, &afb_type_predefined_json_c, &other) >= 0) {
+                result = convert_AfbData_to_PyObject(other);
+                afb_data_unref(other);
+                break;
             }
+            // 2) try convert to STRINGZ
+            if (afb_data_convert(data, &afb_type_predefined_stringz, &other) >= 0) {
+                result = convert_AfbData_to_PyObject(other);
+                afb_data_unref(other);
+                break;
+            }
+            // 3) try convert to BYTEARRAY
+            if (afb_data_convert(data, &afb_type_predefined_bytearray, &other) >= 0) {
+                result = convert_AfbData_to_PyObject(other);
+                afb_data_unref(other);
+                break;
+            }
+            // miss of convertion
+            break;
         }
     }
-    return NULL;
+    return result;
+}
 
-OnErrorExit:
-    return errorMsg;
+// retrieve subcall response and build PY response
+const char *PyPushAfbReply (PyObject *resultP, int start, unsigned nreplies, const afb_data_t *replies)
+{
+    for (int idx = 0; idx < nreplies; idx++)
+    {
+        PyObject *item = convert_AfbData_to_PyObject(replies[idx]);
+        if (item == NULL)
+            return "unsupported return data type";
+        PyTuple_SetItem(resultP, idx + start, item);
+    }
+    return NULL;
 }
 
 void GlueVerbose(GlueHandleT *handle, int level, const char *file, int line, const char *func, const char *fmt, ...)

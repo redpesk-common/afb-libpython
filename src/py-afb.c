@@ -701,12 +701,12 @@ GlueCallAsync(PyObject* self, PyObject* argsP)
             Py_END_ALLOW_THREADS
     }
 
-    _unref_afb_params(params, params_count);
+    afb_data_array_unref((unsigned)params_count, params);
     Py_XDECREF(userdataP);
     Py_RETURN_NONE;
 
 OnErrorExit:
-    _unref_afb_params(params, params_count);
+    afb_data_array_unref((unsigned)params_count, params);
     Py_XDECREF(userdataP);
     if (handle) {
         Py_XDECREF(handle->async.callbackP);
@@ -804,7 +804,7 @@ GlueCallSync(PyObject* self, PyObject* argsP)
     params_count = 0;
 
     if (PyErr_Occurred()) {
-        _unref_afb_params(replies, nreplies);
+        afb_data_array_unref(nreplies, replies);
         return NULL;
     }
     if (err) {
@@ -840,8 +840,8 @@ GlueCallSync(PyObject* self, PyObject* argsP)
 
 OnErrorExit:
     if (!params_handed_to_libafb)
-        _unref_afb_params(params, params_count);
-    _unref_afb_params(replies, nreplies);
+        afb_data_array_unref((unsigned)params_count, params);
+    afb_data_array_unref(nreplies, replies);
     Py_XDECREF(replyP);
     Py_XDECREF(paramsP);
     GLUE_DBG_ERROR(afbMain, errorMsg);
@@ -888,7 +888,8 @@ GlueEvtPush(PyObject* self, PyObject* argsP)
     Py_BEGIN_ALLOW_THREADS status = afb_event_push(evtid, (int)index, params);
     Py_END_ALLOW_THREADS
 
-      _unref_afb_params(params, params_count);
+      afb_data_array_unref((unsigned)params_count, params);
+
     if (status < 0) {
         errorMsg = "afb_event_push fail sending event";
         goto OnErrorExit;
@@ -896,7 +897,7 @@ GlueEvtPush(PyObject* self, PyObject* argsP)
     Py_RETURN_NONE;
 
 OnErrorExit:
-    _unref_afb_params(params, params_count);
+    afb_data_array_unref((unsigned)params_count, params);
     GLUE_DBG_ERROR(afbMain, errorMsg);
     PyErr_SetString(PyExc_RuntimeError, errorMsg);
     return NULL;

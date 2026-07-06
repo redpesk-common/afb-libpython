@@ -42,7 +42,7 @@ def test_event_handler():
                 return 0
             case "emit":
                 evt_args = args[1:]
-                r = libafb.evtpush(my_event, evt_args)
+                r = libafb.evtpush(my_event, *evt_args)
                 assert r is None
                 return 0
             case _:
@@ -74,12 +74,10 @@ def test_event_handler():
 
     evt_data = [43]
 
-    def on_evt(handle, event_name, user_data, wtf):
+    def on_evt(handle, event_name, user_data, *wtf):
         assert handle
         assert event_name == "py-binding/my_event"
         assert user_data == evt_data
-        ## ??
-        assert wtf == []
 
     r = libafb.evthandler(
         _binder,
@@ -90,7 +88,7 @@ def test_event_handler():
 
     for i in range(3):
         evt_data[0] = i
-        r = libafb.callsync(_binder, "py-binding", "verb", "emit")
+        r = libafb.callsync(_binder, "py-binding", "verb", "emit", i, i)
         assert (r.status, r.args) == (0, ())
 
         # event handler already exists
@@ -117,7 +115,7 @@ def test_event_handler():
 
     for i in range(3):
         evt_data[0] = i + 42
-        r = libafb.callsync(_binder, "py-binding", "verb", "emit")
+        r = libafb.callsync(_binder, "py-binding", "verb", "emit", i)
         assert (r.status, r.args) == (0, ())
 
     r = libafb.evtdelete(_binder, "py-binding/*")

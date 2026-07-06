@@ -888,8 +888,6 @@ GlueEvtPush(PyObject* self, PyObject* argsP)
     Py_BEGIN_ALLOW_THREADS status = afb_event_push(evtid, (int)index, params);
     Py_END_ALLOW_THREADS
 
-      afb_data_array_unref((unsigned)params_count, params);
-
     if (status < 0) {
         errorMsg = "afb_event_push fail sending event";
         goto OnErrorExit;

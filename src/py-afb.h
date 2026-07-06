@@ -30,76 +30,86 @@
 #define GLUE_AFB_UID "#afb#"
 #define SUBCALL_MAX_RPLY 8
 
-typedef enum {
-    GLUE_UNKNOWN_MAGIC_TAG=0, /**< Default unset object identity */
-    GLUE_BINDER_MAGIC_TAG,    /**< Identify BINDER objects */
-    GLUE_API_MAGIC_TAG,       /**< Identify API objects */
-    GLUE_RQT_MAGIC_TAG,       /**< Identify REQUEST objects */
-    GLUE_EVT_MAGIC_TAG,       /**< Identify EVENT objects */
-    GLUE_TIMER_MAGIC_TAG,     /**< Identify TIMER objects */
-    GLUE_JOB_MAGIC_TAG,       /**< Identify JOB objects */
-    GLUE_POST_MAGIC_TAG,      /**< Identify POSTED JOB objects */
-    GLUE_CALL_MAGIC_TAG,      /**< Identify ASYNCHRONOUS CALL objects */
-}
-    GlueMagicTagE;
+typedef enum
+{
+    GLUE_UNKNOWN_MAGIC_TAG = 0, /**< Default unset object identity */
+    GLUE_BINDER_MAGIC_TAG,      /**< Identify BINDER objects */
+    GLUE_API_MAGIC_TAG,         /**< Identify API objects */
+    GLUE_RQT_MAGIC_TAG,         /**< Identify REQUEST objects */
+    GLUE_EVT_MAGIC_TAG,         /**< Identify EVENT objects */
+    GLUE_TIMER_MAGIC_TAG,       /**< Identify TIMER objects */
+    GLUE_JOB_MAGIC_TAG,         /**< Identify JOB objects */
+    GLUE_POST_MAGIC_TAG,        /**< Identify POSTED JOB objects */
+    GLUE_CALL_MAGIC_TAG,        /**< Identify ASYNCHRONOUS CALL objects */
+} GlueMagicTagE;
 
-typedef struct {
+typedef struct
+{
     char *uid;
     PyObject *callbackP;
     PyObject *userdataP;
 } GlueAsyncCtxT;
 
-typedef struct {
+typedef struct
+{
     AfbBinderHandleT *afb;
-    //sem_t sem;
+    // sem_t sem;
     PyObject *configP;
     json_object *configJ;
     PyThreadState *pyState;
 } PyBinderHandleT;
 
-typedef struct {
+typedef struct
+{
     struct afb_sched_lock *afb;
-    afb_api_t  apiv4;
+    afb_api_t apiv4;
     long status;
     GlueAsyncCtxT async;
 } PyJobHandleT;
 
-typedef struct {
-    afb_api_t  afb;
+typedef struct
+{
+    afb_api_t afb;
     PyObject *ctrlCb;
     PyObject *configP;
 } PyApiHandleT;
 
-typedef struct {
+typedef struct
+{
     struct PyApiHandleS *api;
     int replied;
     afb_req_t afb;
 } PyRqtHandleT;
 
-typedef struct {
+typedef struct
+{
     afb_event_t afb;
     afb_api_t apiv4;
-  
+
     GlueAsyncCtxT async;
 } PyEventHandleT;
 
-typedef struct {
+typedef struct
+{
     afb_timer_t afb;
     afb_api_t apiv4;
     PyObject *configP;
     GlueAsyncCtxT async;
 } PyTimerHandleT;
 
-typedef struct {
+typedef struct
+{
     afb_api_t apiv4;
     PyObject *configP;
     GlueAsyncCtxT async;
 } PyPostHandleT;
 
-typedef struct {
+typedef struct
+{
     GlueMagicTagE magic;
     int usage;
-    union {
+    union
+    {
         PyBinderHandleT binder;
         PyApiHandleT api;
         PyRqtHandleT rqt;
@@ -110,11 +120,11 @@ typedef struct {
     };
 } GlueHandleT;
 
-typedef struct  {
+typedef struct
+{
     GlueMagicTagE magic;
     GlueHandleT *glue;
     GlueAsyncCtxT async;
 } GlueCallHandleT;
-
 
 extern GlueHandleT *afbMain;

@@ -25,39 +25,72 @@
 #include <Python.h>
 #include <json-c/json.h>
 
-void PyThreadSave(void);
-void PyThreadRestore(void);
+void
+PyThreadSave(void);
+void
+PyThreadRestore(void);
 
-void PyInfoDbg (GlueHandleT *handle, enum afb_syslog_levels level, const char*funcname, const char * format, ...) ;
-void PyPrintMsg (enum afb_syslog_levels level, PyObject *self, PyObject *args);
-void GlueVerbose (GlueHandleT *afbHandle, int level, const char *file, int line, const char *func, const char *fmt, ...);
-json_object *PyJsonDbg(const char *message);
-#define GLUE_AFB_INFO(Glue,...)    GlueVerbose (Glue,AFB_SYSLOG_LEVEL_INFO,__file__,__LINE__,__func__,__VA_ARGS__)
-#define GLUE_AFB_NOTICE(Glue,...)  GlueVerbose (Glue,AFB_SYSLOG_LEVEL_NOTICE,__file__,__LINE__,__func__,__VA_ARGS__)
-#define GLUE_AFB_WARNING(Glue,...) GlueVerbose (Glue,AFB_SYSLOG_LEVEL_WARNING,__file__,__LINE__,__func__,__VA_ARGS__)
-#define GLUE_AFB_ERROR(Glue,...)   GlueVerbose (Glue,AFB_SYSLOG_LEVEL_ERROR,__file__,__LINE__,__func__,__VA_ARGS__)
-#define GLUE_DBG_ERROR(Glue,...)   PyInfoDbg (Glue, AFB_SYSLOG_LEVEL_ERROR, __func__, __VA_ARGS__);
+void
+PyInfoDbg(GlueHandleT *handle,
+          enum afb_syslog_levels level,
+          const char *funcname,
+          const char *format,
+          ...);
+void
+PyPrintMsg(enum afb_syslog_levels level, PyObject *self, PyObject *args);
+void
+GlueVerbose(GlueHandleT *afbHandle,
+            int level,
+            const char *file,
+            int line,
+            const char *func,
+            const char *fmt,
+            ...);
+json_object *
+PyJsonDbg(const char *message);
+#define GLUE_AFB_INFO(Glue, ...)                                                                   \
+    GlueVerbose(Glue, AFB_SYSLOG_LEVEL_INFO, __file__, __LINE__, __func__, __VA_ARGS__)
+#define GLUE_AFB_NOTICE(Glue, ...)                                                                 \
+    GlueVerbose(Glue, AFB_SYSLOG_LEVEL_NOTICE, __file__, __LINE__, __func__, __VA_ARGS__)
+#define GLUE_AFB_WARNING(Glue, ...)                                                                \
+    GlueVerbose(Glue, AFB_SYSLOG_LEVEL_WARNING, __file__, __LINE__, __func__, __VA_ARGS__)
+#define GLUE_AFB_ERROR(Glue, ...)                                                                  \
+    GlueVerbose(Glue, AFB_SYSLOG_LEVEL_ERROR, __file__, __LINE__, __func__, __VA_ARGS__)
+#define GLUE_DBG_ERROR(Glue, ...) PyInfoDbg(Glue, AFB_SYSLOG_LEVEL_ERROR, __func__, __VA_ARGS__);
 
-char *pyObjToStr(PyObject* objP);
-json_object *pyObjToJson(PyObject* objP, int* hasError);
-PyObject * jsonToPyObj(json_object *argsJ);
-void PyFreeJsonCtx (json_object *configJ, void *userdata) ;
+char *
+pyObjToStr(PyObject *objP);
+json_object *
+pyObjToJson(PyObject *objP, int *hasError);
+PyObject *
+jsonToPyObj(json_object *argsJ);
+void
+PyFreeJsonCtx(json_object *configJ, void *userdata);
 
-GlueHandleT *PyRqtNew(afb_req_t afbRqt);
-void PyRqtAddref(GlueHandleT *pyRqt);
-void PyRqtUnref(GlueHandleT *pyRqt);
-int InitPrivateData (GlueHandleT*glue);
+GlueHandleT *
+PyRqtNew(afb_req_t afbRqt);
+void
+PyRqtAddref(GlueHandleT *pyRqt);
+void
+PyRqtUnref(GlueHandleT *pyRqt);
+int
+InitPrivateData(GlueHandleT *glue);
 
-afb_api_t GlueGetApi(GlueHandleT*glue);
-int GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply);
-const char *PyPushAfbReply (PyObject *responseP, int start, unsigned nreplies, const afb_data_t *replies);
-PyObject *convert_AfbData_to_PyObject(afb_data_t data);
+afb_api_t
+GlueGetApi(GlueHandleT *glue);
+int
+GlueAfbReply(GlueHandleT *glue, long status, long nbreply, afb_data_t *reply);
+const char *
+PyPushAfbReply(PyObject *responseP, int start, unsigned nreplies, const afb_data_t *replies);
+PyObject *
+convert_AfbData_to_PyObject(afb_data_t data);
 
 #if PY_VERSION_HEX >= 0x030a0000
 // Py_NewRef has been introduced in CPython 3.10
 #define AFB_Py_NewRef(x) Py_NewRef(x)
 #else
-static inline PyObject* AFB_Py_NewRef(PyObject *obj)
+static inline PyObject *
+AFB_Py_NewRef(PyObject *obj)
 {
     Py_INCREF(obj);
     return obj;

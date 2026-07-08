@@ -1,6 +1,6 @@
-# Changelog
+## [2.3.0] - 2026-07-08
 
-All notable changes to this project will be documented in this file.
+- cleanup and fixes (notabily memory leaks)
 
 ## [2.2.1] - 2025-10-23
 

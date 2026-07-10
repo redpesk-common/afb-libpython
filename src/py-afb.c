@@ -610,6 +610,7 @@ _unref_afb_params(afb_data_t* params, long count)
 static PyObject*
 GlueCallAsync(PyObject* self, PyObject* argsP)
 {
+    bool reportError = true;
     const char* errorMsg =
       "syntax: callasync(handle, api, verb, callback, context, ...)";
     long index = 0;
@@ -654,6 +655,7 @@ GlueCallAsync(PyObject* self, PyObject* argsP)
         if (!_convert_py_argument_to_afb_data(
               pyArg, &params[index], index + 5)) {
             errorMsg = "invalid argument type";
+            reportError = false;
             goto OnErrorExit;
         }
     }
@@ -713,14 +715,17 @@ OnErrorExit:
         Py_XDECREF(handle->async.userdataP);
         free(handle);
     }
-    GLUE_DBG_ERROR(afbMain, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    if (reportError) {
+        GLUE_DBG_ERROR(afbMain, errorMsg);
+        PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    }
     return NULL;
 }
 
 static PyObject*
 GlueCallSync(PyObject* self, PyObject* argsP)
 {
+    bool reportError = true;
     const char* errorMsg = "syntax: callsync(handle, api, verb, ...)";
     int err, status;
     long index = 0, count = PyTuple_GET_SIZE(argsP);
@@ -759,6 +764,7 @@ GlueCallSync(PyObject* self, PyObject* argsP)
         if (!_convert_py_argument_to_afb_data(
               pyArg, &params[index], index + 3)) {
             errorMsg = "invalid argument type";
+            reportError = false;
             goto OnErrorExit;
         }
     }
@@ -844,8 +850,10 @@ OnErrorExit:
     afb_data_array_unref(nreplies, replies);
     Py_XDECREF(replyP);
     Py_XDECREF(paramsP);
-    GLUE_DBG_ERROR(afbMain, errorMsg);
-    PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    if (reportError) {
+        GLUE_DBG_ERROR(afbMain, errorMsg);
+        PyErr_SetString(PyExc_RuntimeError, errorMsg);
+    }
     return NULL;
 }
 

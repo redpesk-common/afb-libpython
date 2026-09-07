@@ -68,6 +68,7 @@ demoApi = {
     "verbose": 9,
     "export": "public",
     "verbs": demoVerbs,
+    "alias": ["/devtools:/usr/share/afb-ui-devtools/binder"],
 }
 
 # define and instantiate libafb-binder

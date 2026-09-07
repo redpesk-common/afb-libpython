@@ -65,7 +65,7 @@ Make sure that your dependencies are reachable from the Python scripting engine,
 
 ```bash
     export PYTHONPATH=/path/to/libafb.so
-    python3 sample/simple-api.python
+    python3 samples/simple-api.py
     #http://localhost:1234/devtools
 ```
 

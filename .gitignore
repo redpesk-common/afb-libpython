@@ -7,3 +7,5 @@ nbproject/
 *.tar.gz
 __*.pyc
 __*__
+.pre-commit-config.yaml
+.venv*

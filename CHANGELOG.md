@@ -1,6 +1,10 @@
+## [2.3.1] - 2027-10-27
+
+- Fix reporting error in some rare cases
+
 ## [2.3.0] - 2026-07-08
 
-- cleanup and fixes (notabily memory leaks)
+- Cleanup and fixes (notabily memory leaks)
 
 ## [2.2.1] - 2025-10-23
 
